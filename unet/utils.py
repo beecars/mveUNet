@@ -27,8 +27,8 @@ def readFloatImage(fname, im_size=(512,512)):
 def match_files_from_patient(
         patient_idx, 
         day_selection, 
-        ct_pt_folder='../.jennifer_data/CT-PT-Images', 
-        mask_folder='../.jennifer_data/UCharImages-MultiClass',
+        ct_pt_folder='C:/.py_workspace/reveal/.reveal_data/CT-PT-Images', 
+        mask_folder='C:/.py_workspace/reveal/.reveal_data/UCharImages-MultiClass',
         mode='ALL_DATA'):
     '''
     For a given patient/day, constructs a 2d list containing lines of 
@@ -37,9 +37,9 @@ def match_files_from_patient(
     this function. Manipulates columns as ndarray but returns as list.
 
     Modes:
-    'CT_BINARY': matches ct files and binary segmentation masks.
+    'CT_SPINE': matches ct files and spine segmentation labels.
         RETURNS: [[str(ct)], 
-                  [str(mask)]]
+                  [str(spine mask)]]
     'CT_SPINE_STERNUM_PELVIS': matches ct files and multiclass segmentations.
         RETURNS: [[str(ct)], 
                   [str(spine mask)], 
@@ -65,11 +65,9 @@ def match_files_from_patient(
                    .format(ct_pt_folder, patient_idx, day_selection))
     # Get list of CT filenames from the Patient/Day arguments.
     ct_fnames = [file.__str__() for file in list(ct_path.glob('*'))]
-    
     # Define PT organizational folder path.
     pt_path = Path('{}/P{:02d}/Day_{}/PT-Float'
                    .format(ct_pt_folder, patient_idx, day_selection))
-    
     # Wrap 'mask_folder' as a Path object.
     mask_folder = Path(mask_folder)
     # Mask prefix used later in loop.
@@ -80,7 +78,7 @@ def match_files_from_patient(
     # mask pattern. List includes binary, spine, sternum, pelvis filepaths.
     mask_fnames = [file.__str__() for file in 
                    list(mask_folder.glob(mask_pattern + '*.uchar'))]
-    
+
     # Initialize 'data' list to be filled by for loop.
     data = []
     for ct_fname in ct_fnames:
@@ -92,15 +90,6 @@ def match_files_from_patient(
         pt_fname = Path('{}/P{:02d}_{}_{}_Pelvis.float'
                         .format(pt_path, patient_idx, day_selection, slice_idx)
                        ).__str__()
-
-        # Look for potential UNDEFINED mask files with ct index.
-        maybe_mask_fname = ('{}_{}.uchar'
-                            .format(mask_prefix, slice_idx))
-        if maybe_mask_fname in mask_fnames:
-            mask_fname = maybe_mask_fname
-        else:
-            mask_fname = Path('{}/empty.uchar'
-                              .format(mask_folder)).__str__()
         
         # Look for potential SPINE mask file with ct index.
         maybe_spine_fname = ('{}_{}_Spine.uchar'
@@ -132,25 +121,26 @@ def match_files_from_patient(
         # Append the various the filepaths to the 2d data list.
         data.append((ct_fname,          # data[:,0]
                      pt_fname,          # data[:,1]
-                     mask_fname,        # data[:,2]
-                     spine_fname,       # data[:,3]
-                     sternum_fname,     # data[:,4]
-                     pelvis_fname))     # data[:,5]
+                     spine_fname,       # data[:,2]
+                     sternum_fname,     # data[:,3]
+                     pelvis_fname))     # data[:,4]
     
     # Convert data list to nparray for easier column manipulations.
     data = np.array(data)
     # Use 'mode' argument to select the desired output from 'data'.
-    if mode == 'CT_SPINE_STERNUM_PELVIS':
-        output = np.array([data[:,0], data[:,3], data[:,4], data[:,5]]).T
-    elif mode == 'CT_SPINE_STERNUM':
-        output = np.array([data[:,0], data[:,3], data[:,4]]).T
-    elif mode == 'CT_BINARY':
+    if mode == 'CT_SPINE':
         output = np.array([data[:,0], data[:,2]]).T
+    elif mode == 'CT_PT_SPINE':
+        output = np.array([data[:,0], data[:,1], data[:,2]]).T
+    elif mode == 'CT_SPINE_STERNUM_PELVIS':
+        output = np.array([data[:,0], data[:,2], data[:,3], data[:,4]]).T
+    elif mode == 'CT_SPINE_STERNUM':
+        output = np.array([data[:,0], data[:,2], data[:,3]]).T
     elif mode == 'CT_PT':
         output = np.array([data[:,0], data[:,1]]).T
     elif mode == 'ALL_DATA':
         output = np.array([data[:,0], data[:,1], data[:,2], 
-                           data[:,3], data[:,4], data[:,5]]).T
+                           data[:,3], data[:,4]]).T
     else:
         print('ERROR: Enter valid mode parameter')
         return
@@ -160,9 +150,7 @@ def match_files_from_patient(
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-""" 
-def get_spine_mask(mat_fname):
-
+def get_spine_mask_v2(mat_fname, model, output_path):
     mat_data = scio.loadmat(mat_fname)
     CT = mat_data['ct_hounsfield']
     pixel_spacing = mat_data['ct_info'][0,0]['PixelSpacing']
@@ -189,9 +177,8 @@ def get_spine_mask(mat_fname):
             spine_masks[idx, :, :] = mask
 
     base_fname = os.path.basename(mat_fname)
-    scio.savemat('spine-{}'.format(base_fname), 
+    scio.savemat(os.path.join(output_path, 'spine-{}'.format(base_fname)), 
                  {'mask':np.transpose(spine_masks, [1, 2, 0]),
                   'ct': np.transpose(ct_images, [1, 2, 0]),
                   'pixel_spacing': pixel_spacing,
-                  'slice_spacing': slice_spacing}) 
-"""
+                  'slice_spacing': slice_spacing})
