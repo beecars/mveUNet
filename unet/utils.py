@@ -29,7 +29,8 @@ def match_files_from_patient(
         day_selection, 
         ct_pt_folder='C:/.py_workspace/reveal/.reveal_data/CT-PT-Images', 
         mask_folder='C:/.py_workspace/reveal/.reveal_data/UCharImages-MultiClass',
-        mode='ALL_DATA'):
+        mode='ALL_DATA',
+        no_empties=True):
     '''
     For a given patient/day, constructs a 2d list containing lines of 
     matching image filepaths. From this list of matching filepaths, a selection 
@@ -39,6 +40,10 @@ def match_files_from_patient(
     Modes:
     'CT_SPINE': matches ct files and spine segmentation labels.
         RETURNS: [[str(ct)], 
+                  [str(spine mask)]]
+    'CT_PT_SPINE': matches ct and pt files with spine segmentation labels.
+        RETURNS: [[str(ct)], 
+                  [str(pt)],
                   [str(spine mask)]]
     'CT_SPINE_STERNUM_PELVIS': matches ct files and multiclass segmentations.
         RETURNS: [[str(ct)], 
@@ -60,22 +65,17 @@ def match_files_from_patient(
                   [str(sternum mask)], 
                   [str(pelvis mask)]]
     '''
-    # Define CT organizational folder path.
+    # Define organizational folder structure for ct, pt, mask files.
     ct_path = Path('{}/P{:02d}/Day_{}/CT'
                    .format(ct_pt_folder, patient_idx, day_selection))
-    # Get list of CT filenames from the Patient/Day arguments.
     ct_fnames = [file.__str__() for file in list(ct_path.glob('*'))]
-    # Define PT organizational folder path.
+    
     pt_path = Path('{}/P{:02d}/Day_{}/PT-Float'
                    .format(ct_pt_folder, patient_idx, day_selection))
-    # Wrap 'mask_folder' as a Path object.
+    
     mask_folder = Path(mask_folder)
-    # Mask prefix used later in loop.
     mask_prefix = Path(mask_folder,'P{}_{}'.format(patient_idx, day_selection))
-    # Define patient/day naming pattern for the mask files. 
     mask_pattern = 'P{}_{}_'.format(patient_idx, day_selection)
-    # Get the list of ALL mask files (paths) in mask folder that match the 
-    # mask pattern. List includes binary, spine, sternum, pelvis filepaths.
     mask_fnames = [file.__str__() for file in 
                    list(mask_folder.glob(mask_pattern + '*.uchar'))]
 
@@ -118,7 +118,6 @@ def match_files_from_patient(
             pelvis_fname = Path('{}/empty.uchar'
                                 .format(mask_folder)).__str__()
         
-        # Append the various the filepaths to the 2d data list.
         data.append((ct_fname,          # data[:,0]
                      pt_fname,          # data[:,1]
                      spine_fname,       # data[:,2]
