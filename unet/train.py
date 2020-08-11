@@ -1,26 +1,10 @@
-from PIL import Image
 import numpy as np
 import torch
-
-import torch.nn as nn
-import torch.nn.functional as F
-import os
-from tqdm import tqdm
-
-from torch.utils.data import DataLoader
-from torch.optim import lr_scheduler
-
-from utils import match_files_from_patient
-from model import UNet
-from losses import FocalLoss, MixedLoss, dice, IoU
-
-import imgaug as iaa
-from datetime import datetime
-import pickle
+from losses import dice, IoU
 
 def train_net(model, 
               device, 
-              train_generator,
+              train_loader,
               batch_size, 
               criterion, 
               optimizer,
@@ -32,11 +16,11 @@ def train_net(model,
     model.train()
     train_loss = []
 
-    for batch_idx, batch_data in enumerate(train_generator):
+    for batch_idx, batch_data in enumerate(train_loader):
         
         cts = batch_data['data']
         cts = cts.to(device)
-        
+    
         labels = batch_data['label']
         labels = labels.to(device)
         
@@ -57,8 +41,8 @@ def train_net(model,
         # print log message in terminal
         if print_log == True and batch_idx % log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * batch_size, len(train_generator.dataset),
-                100. * batch_idx / len(train_generator), loss.item()))
+                epoch, batch_idx * batch_size, len(train_loader.dataset),
+                100. * batch_idx / len(train_loader), loss.item()))
             
     learning_scheduler.step()
 
@@ -75,7 +59,6 @@ def test_net(model,
     
     dice_score = 0.0
     iou_score = 0.0
-    correct = 0.0
     
     with torch.no_grad():
         for i, batch_data in enumerate(test_generator):
