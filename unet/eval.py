@@ -1,7 +1,7 @@
 import torch
 from losses import dice, IoU
 
-def test_net(model, 
+def eval_net(model, 
              device, 
              test_generator,  
              print_log=False):
