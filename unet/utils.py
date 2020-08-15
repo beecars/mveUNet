@@ -6,17 +6,23 @@ import model
 import torch
 from pathlib import Path
 
-def readUCharImage(fname, im_size=(512,512)):
+def readUCharImage(fname, im_size=(512,512), as_tensor=False):
     with open(fname, 'rb') as f:
         rawData = f.read()
         img = Image.frombytes('L', im_size, rawData)
-        return np.array(img)
+        if as_tensor:
+            return torch.from_numpy(np.array(img)).float()
+        else:
+            return np.array(img)
         
-def readBinImage(fname, im_size=(512,512)):
+def readBinImage(fname, im_size=(512,512), as_tensor=False):
     with open(fname, 'rb') as f:
         rawData = f.read()
         img = Image.frombytes('I', im_size, rawData)
-        return np.array(img).T
+        if as_tensor:
+            return torch.from_numpy(np.array(img).T).float()
+        else:
+            return np.array(img).T
 
 def readFloatImage(fname, im_size=(512,512)):
     with open(fname, 'rb') as f:
@@ -30,7 +36,7 @@ def match_files_from_patient(
         ct_pt_folder='C:/.py_workspace/reveal/.reveal_data/CT-PT-Images', 
         mask_folder='C:/.py_workspace/reveal/.reveal_data/UCharImages-MultiClass',
         mode='ALL_DATA',
-        no_empties=True):
+        no_empties=False):
     '''
     For a given patient/day, constructs a 2d list containing lines of 
     matching image filepaths. From this list of matching filepaths, a selection 
@@ -96,6 +102,8 @@ def match_files_from_patient(
                              .format(mask_prefix, slice_idx))
         if maybe_spine_fname in mask_fnames:
             spine_fname = maybe_spine_fname
+        elif no_empties:
+            continue
         else:
             spine_fname = Path('{}/empty.uchar'
                                .format(mask_folder)).__str__()
@@ -130,7 +138,7 @@ def match_files_from_patient(
     if mode == 'CT_SPINE':
         output = np.array([data[:,0], data[:,2]]).T
     elif mode == 'CT_PT_SPINE':
-        output = np.array([data[:,0], data[:,1], data[:,2]]).T
+        output = np.array([data[:,0], data[:,1], data[:,2]]).T                    
     elif mode == 'CT_SPINE_STERNUM_PELVIS':
         output = np.array([data[:,0], data[:,2], data[:,3], data[:,4]]).T
     elif mode == 'CT_SPINE_STERNUM':
