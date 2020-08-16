@@ -1,10 +1,11 @@
-from PIL import Image
+
+import os
+from pathlib import Path
 import numpy as np
 import scipy.io as scio
-import os
-import model
+import matplotlib.pyplot as plt
 import torch
-from pathlib import Path
+from PIL import Image
 
 def readUCharImage(fname, im_size=(512,512), as_tensor=False):
     with open(fname, 'rb') as f:
@@ -30,7 +31,7 @@ def readFloatImage(fname, im_size=(512,512)):
         img = Image.frombytes('F', im_size, rawData)
         return np.array(img)
 
-def match_files_from_patient(
+def matchFilesFromPatient(
         patient_idx, 
         day_selection, 
         ct_pt_folder='C:/.py_workspace/reveal/.reveal_data/CT-PT-Images', 
@@ -154,6 +155,22 @@ def match_files_from_patient(
 
     return output.tolist()
 
+def plotSomeImages(figures, nrows = 1, ncols=1):
+    """Plot a dictionary of figures.
+
+    Parameters
+    ----------
+    figures : <title, figure> dictionary
+    ncols : number of columns of subplots wanted in the display
+    nrows : number of rows of subplots wanted in the figure
+    """
+    fig, axeslist = plt.subplots(ncols=ncols, nrows=nrows, figsize=(10,10))
+    for ind,title in enumerate(figures):
+        axeslist.ravel()[ind].imshow(figures[title], cmap='cividis')
+        axeslist.ravel()[ind].set_title(title, fontsize=15)
+        axeslist.ravel()[ind].set_axis_off()
+    plt.tight_layout() # optional
+
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
@@ -189,3 +206,4 @@ def get_spine_mask_v2(mat_fname, model, output_path):
                   'ct': np.transpose(ct_images, [1, 2, 0]),
                   'pixel_spacing': pixel_spacing,
                   'slice_spacing': slice_spacing})
+
