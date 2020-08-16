@@ -1,4 +1,3 @@
-
 import os
 from pathlib import Path
 import numpy as np
@@ -103,8 +102,9 @@ def matchFilesFromPatient(
                              .format(mask_prefix, slice_idx))
         if maybe_spine_fname in mask_fnames:
             spine_fname = maybe_spine_fname
-        elif no_empties:
-            continue
+        elif no_empties:    
+            # Special case to return only entries where spine mask is avail.
+            continue       
         else:
             spine_fname = Path('{}/empty.uchar'
                                .format(mask_folder)).__str__()
@@ -157,7 +157,6 @@ def matchFilesFromPatient(
 
 def plotSomeImages(figures, nrows = 1, ncols=1):
     """Plot a dictionary of figures.
-
     Parameters
     ----------
     figures : <title, figure> dictionary
