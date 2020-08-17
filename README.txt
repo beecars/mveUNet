@@ -1,4 +1,7 @@
 REVEAL imaging project code
+
+NOTE: REQUIRES SETTING ENVIRONMENT VARIABLE "REVEAL_DATA_PATH" to the folder
+      that contains "CT-PT-Images" and UCharImages-Multiclass" sub-folders.
 -------------------------------------------------------------------------------
 CONTENTS:
 unet/
@@ -15,9 +18,6 @@ unet/
    -- utils.py       A variety of image reading, data coallating, plotting,
                      and other tools used throughtout the project. 
 -------------------------------------------------------------------------------
-Will require changing data paths in:
-    "utils.py" -> "matchFilesFromPatient" 
-    (match your own environment) 
     
 Files modified from Choung's UNet.
    Notable modifications:
