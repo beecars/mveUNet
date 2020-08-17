@@ -1,6 +1,6 @@
 REVEAL imaging project code
 
-NOTE: REQUIRES SETTING ENVIRONMENT VARIABLE "REVEAL_DATA_PATH" to the folder
+NOTE: REQUIRES SETTING ENVIRONMENT VARIABLE "REVEAL_DATA" to the folder
       that contains "CT-PT-Images" and UCharImages-Multiclass" sub-folders.
 -------------------------------------------------------------------------------
 CONTENTS:
