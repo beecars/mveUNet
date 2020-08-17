@@ -1,4 +1,3 @@
-
 import os
 from pathlib import Path
 import numpy as np
@@ -34,8 +33,7 @@ def readFloatImage(fname, im_size=(512,512)):
 def matchFilesFromPatient(
         patient_idx, 
         day_selection, 
-        ct_pt_folder='C:/.py_workspace/reveal/.reveal_data/CT-PT-Images', 
-        mask_folder='C:/.py_workspace/reveal/.reveal_data/UCharImages-MultiClass',
+        data_folder = os.environ['REVEAL_DATA'],
         mode='ALL_DATA',
         no_empties=False):
     '''
@@ -73,6 +71,7 @@ def matchFilesFromPatient(
                   [str(pelvis mask)]]
     '''
     # Define organizational folder structure for ct, pt, mask files.
+    ct_pt_folder = Path(data_folder, 'CT-PT-Images')
     ct_path = Path('{}/P{:02d}/Day_{}/CT'
                    .format(ct_pt_folder, patient_idx, day_selection))
     ct_fnames = [file.__str__() for file in list(ct_path.glob('*'))]
@@ -80,7 +79,7 @@ def matchFilesFromPatient(
     pt_path = Path('{}/P{:02d}/Day_{}/PT-Float'
                    .format(ct_pt_folder, patient_idx, day_selection))
     
-    mask_folder = Path(mask_folder)
+    mask_folder = Path(data_folder, 'UCharImages-Multiclass')
     mask_prefix = Path(mask_folder,'P{}_{}'.format(patient_idx, day_selection))
     mask_pattern = 'P{}_{}_'.format(patient_idx, day_selection)
     mask_fnames = [file.__str__() for file in 
@@ -206,4 +205,3 @@ def get_spine_mask_v2(mat_fname, model, output_path):
                   'ct': np.transpose(ct_images, [1, 2, 0]),
                   'pixel_spacing': pixel_spacing,
                   'slice_spacing': slice_spacing})
-
