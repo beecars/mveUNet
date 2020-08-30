@@ -1,4 +1,3 @@
-import torch
 from utils import readBinImage
 
 def predict(model, img_fname):
