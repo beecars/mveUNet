@@ -30,6 +30,19 @@ def readFloatImage(fname, im_size=(512,512)):
         img = Image.frombytes('F', im_size, rawData)
         return np.array(img)
 
+def masks2classes(masks):
+    ''' From multiple masks representing multiple classes, creates a single-mask 
+    representation where "pixel" value is an integer class label. Input is an
+    array of binary image masks, output is a single multi-class mask.
+    '''
+    object_class = 1
+    mask_size = np.shape(masks)[1:3]
+    target = np.zeros(mask_size)
+    for mask in masks:
+        target = target + mask * object_class
+        object_class = object_class + 1
+    return target
+
 def matchFilesFromPatient(
         patient_idx, 
         day_selection, 
