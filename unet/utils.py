@@ -30,6 +30,33 @@ def readFloatImage(fname, im_size=(512,512)):
         img = Image.frombytes('F', im_size, rawData)
         return np.array(img)
 
+def plotSomeImages(figures, nrows = 1, ncols=1):
+    """Plots a dictionary of figures in a given grid.
+    params:
+    figures - <title, figure> dictionary
+    ncols - number of columns of subplots wanted in the display
+    nrows - number of rows of subplots wanted in the figure
+    """
+    fig, axeslist = plt.subplots(ncols=ncols, nrows=nrows, figsize=(10,10))
+    for ind,title in enumerate(figures):
+        axeslist.ravel()[ind].imshow(figures[title], cmap='cividis')
+        axeslist.ravel()[ind].set_title(title, fontsize=15)
+        axeslist.ravel()[ind].set_axis_off()
+    plt.tight_layout() # optional
+
+def masks2classes(masks):
+    ''' From multiple masks representing multiple classes, create a single-mask 
+    representation where "pixel" value is an integer class label. Input is a
+    tensor of binary image masks, output is a single multi-class tensor mask.
+    '''
+    mask_size = masks.size()[1:3]
+    target = torch.zeros(mask_size)
+    object_class = 1
+    for mask in masks:
+        target = target + mask * object_class
+        object_class = object_class + 1
+    return target
+
 def matchFilesFromPatient(
         patient_idx, 
         day_selection, 
@@ -102,8 +129,9 @@ def matchFilesFromPatient(
                              .format(mask_prefix, slice_idx))
         if maybe_spine_fname in mask_fnames:
             spine_fname = maybe_spine_fname
-        elif no_empties:
-            continue
+        elif no_empties:    
+            # Special case to return only entries where spine mask is avail.
+            continue       
         else:
             spine_fname = Path('{}/empty.uchar'
                                .format(mask_folder)).__str__()
@@ -154,25 +182,10 @@ def matchFilesFromPatient(
 
     return output.tolist()
 
-def plotSomeImages(figures, nrows = 1, ncols=1):
-    """Plot a dictionary of figures.
-
-    Parameters
-    ----------
-    figures : <title, figure> dictionary
-    ncols : number of columns of subplots wanted in the display
-    nrows : number of rows of subplots wanted in the figure
-    """
-    fig, axeslist = plt.subplots(ncols=ncols, nrows=nrows, figsize=(10,10))
-    for ind,title in enumerate(figures):
-        axeslist.ravel()[ind].imshow(figures[title], cmap='cividis')
-        axeslist.ravel()[ind].set_title(title, fontsize=15)
-        axeslist.ravel()[ind].set_axis_off()
-    plt.tight_layout() # optional
-
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
+'''
 def get_spine_mask_v2(mat_fname, model, output_path):
     mat_data = scio.loadmat(mat_fname)
     CT = mat_data['ct_hounsfield']
@@ -205,3 +218,4 @@ def get_spine_mask_v2(mat_fname, model, output_path):
                   'ct': np.transpose(ct_images, [1, 2, 0]),
                   'pixel_spacing': pixel_spacing,
                   'slice_spacing': slice_spacing})
+'''
