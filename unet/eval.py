@@ -1,5 +1,5 @@
 import torch
-from losses import dice, IoU, dice_coef, dice_coef_multiclass
+from losses import dice, IoU
 
 def eval_net(model, 
              device, 
