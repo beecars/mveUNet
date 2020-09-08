@@ -1,10 +1,12 @@
 REVEAL imaging project code
 
+*******************************************************************************
 NOTE: REQUIRES SETTING ENVIRONMENT VARIABLE "REVEAL_DATA" to the folder
       that contains "CT-PT-Images" and UCharImages-Multiclass" sub-folders.
--------------------------------------------------------------------------------
-CONTENTS:
+*******************************************************************************
 
+CONTENTS:
+-------------------------------------------------------------------------------
 unet/
    -- unet_ct_test.ipynb   A jupyter-style script for easy testing and
                            simple modification of the UNet training. 
