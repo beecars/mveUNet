@@ -4,6 +4,7 @@ NOTE: REQUIRES SETTING ENVIRONMENT VARIABLE "REVEAL_DATA" to the folder
       that contains "CT-PT-Images" and UCharImages-Multiclass" sub-folders.
 -------------------------------------------------------------------------------
 CONTENTS:
+
 unet/
    -- unet_ct_test.ipynb   A jupyter-style script for easy testing and
                            simple modification of the UNet training. 
@@ -17,4 +18,8 @@ unet/
                      A component of the training process (not standalone).
    -- utils.py       A variety of image reading, data coallating, plotting,
                      and other tools used throughtout the project. 
+
+unet-multiclass/        **** NOT WORKING WELL ****
+   -- Largely the same contents as /unet/ but functions are adapted to enable
+      multiclass segmentations.
 -------------------------------------------------------------------------------
