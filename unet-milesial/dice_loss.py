@@ -1,6 +1,14 @@
 import torch
 from torch.autograd import Function
 
+################################################################################
+##### CHUONG VALIDATION IOU: added to eval_net in eval.py
+################################################################################
+def IoU(pred, targs):
+    pred = (pred>0).float()
+    intersection = (pred*targs).sum()
+    return intersection / ((pred+targs).sum() - intersection + 1.0)
+################################################################################
 
 class DiceCoeff(Function):
     """Dice coeff for individual examples"""
