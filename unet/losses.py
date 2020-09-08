@@ -2,6 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from torch.autograd import Function
+from itertools import repeat
+import numpy as np
+
+
 class FocalLoss(nn.Module):
     def __init__(self, alpha=1, gamma=2, logits=False, reduce=True):
         super(FocalLoss, self).__init__()
@@ -23,17 +28,6 @@ class FocalLoss(nn.Module):
         else:
             return F_loss
 
-class MixedLoss(nn.Module):
-    def __init__(self, alpha, gamma):
-        super().__init__()
-        self.alpha = alpha
-        self.focal = FocalLoss(4.0, gamma, logits=True, reduce=False)
-        
-    def forward(self, input, target):
-        loss = self.alpha*self.focal(input, target, ) -                     \
-                                        torch.log(dice_loss(input, target))
-        loss = self.focal(input, target)
-        return loss.mean()
 
 def dice_loss(input, target):
     input = torch.sigmoid(input)
@@ -45,9 +39,23 @@ def dice_loss(input, target):
     
     return ((2.0 * intersection + smooth) / (iflat.sum() + tflat.sum() + smooth))
 
+
+class MixedLoss(nn.Module):
+    def __init__(self, alpha, gamma):
+        super().__init__()
+        self.alpha = alpha
+        self.focal = FocalLoss(4.0, gamma, logits=True, reduce=False)
+        
+    def forward(self, input, target):
+        loss = self.alpha*self.focal(input, target, ) - torch.log(dice_loss(input, target))
+        loss = self.focal(input, target)
+        return loss.mean()
+
+
 def dice(pred, targs):
     pred = (pred>0).float()
     return 2.0 * (pred*targs).sum() / ((pred+targs).sum() + 1.0)
+
 
 def IoU(pred, targs):
     pred = (pred>0).float()

@@ -1,9 +1,10 @@
 import numpy as np
 import random
+
 import torch
 from torch.utils.data import Dataset
 
-from utils import masks2classes, readBinImage, readUCharImage
+from utils import readBinImage, readUCharImage
 
 class CTMaskDataset(Dataset):
     ''' Single class training Dataset.
@@ -44,8 +45,8 @@ class CTMaskDataset(Dataset):
         ct = torch.from_numpy(ct).unsqueeze(0).float()
         mask = torch.from_numpy(mask).unsqueeze(0).float()
         
-        return {'image': ct, 
-                'target': mask}
+        return {'data': ct, 
+                'label': mask}
     
     def __len__(self):
         return len(self.data)
@@ -74,7 +75,6 @@ class CTMulticlassDataset(Dataset):
         spine_mask = readUCharImage(spine_fname)
         stern_mask = readUCharImage(sternum_fname)
         pelvi_mask = readUCharImage(pelvis_fname)
-        
         Kx, Ky = self.offset
         Lx, Ly = self.output_size
         if self.augment:
@@ -82,7 +82,6 @@ class CTMulticlassDataset(Dataset):
             ky = random.randint(0, Ky)
         else:
             kx, ky = 96, 96
-        
         ct = ct[kx:kx+Lx, ky:ky+Ly]
         spine_mask = spine_mask[kx:kx+Lx, ky:ky+Ly]
         stern_mask = stern_mask[kx:kx+Lx, ky:ky+Ly]
@@ -95,16 +94,14 @@ class CTMulticlassDataset(Dataset):
             pelvi_mask = np.fliplr(pelvi_mask).copy()
 
         ct = torch.from_numpy(ct).unsqueeze(0).float()
+        spine_mask = torch.from_numpy(spine_mask).unsqueeze(0).float()
+        stern_mask = torch.from_numpy(stern_mask).unsqueeze(0).float()
+        pelvi_mask = torch.from_numpy(pelvi_mask).unsqueeze(0).float()
 
-        spine_mask = torch.from_numpy(spine_mask).float()
-        stern_mask = torch.from_numpy(stern_mask).float()
-        pelvi_mask = torch.from_numpy(pelvi_mask).float()
-        
-        mask_stack = torch.stack([spine_mask, stern_mask, pelvi_mask], 
-                                 dim = 0)
-
-        return {'image': ct, 
-                'target': mask_stack
+        return {'ct': ct, 
+                'spine_label': spine_mask,
+                'stern_label': stern_mask,
+                'pelvi_label': pelvi_mask,
                }
     
     def __len__(self):
