@@ -38,7 +38,7 @@ def train_net(model,
         train_loss.append(loss.item())
 
         # print log message in terminal
-        if print_log == True and batch_idx % 100 == 0:
+        if print_log == True and batch_idx % 10 == 0:
             print('Train Epoch {}:  [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                   epoch+1, 
                   batch_idx * batch_size, 
