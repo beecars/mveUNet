@@ -12,10 +12,11 @@ def eval_net(net, loader, device):
     dice_tot = 0
     iou_tot = 0
     with tqdm(total=n_val, 
-              desc='Validation round', 
+              desc='Validation', 
               unit='batch', 
               leave=False,
-              ascii = True) as pbar:
+              ascii = True,
+              bar_format='{l_bar}{bar:30}{r_bar}{bar:-10b}') as pbar:
               
         for batch in loader:
             imgs, true_masks = batch['image'], batch['target']
