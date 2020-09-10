@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import sys
+from datetime import datetime
 
 import numpy as np
 import random
@@ -31,8 +32,13 @@ for idx in patient_idxs:
         ct_data.extend(matched_data)
 random.shuffle(ct_data)
 ################################################################################
-### SET CHECKPOINT DIRECTORY
-dir_checkpoint = 'unet-milesial/checkpoints/'
+### SET LOGGING AND MODEL CKPT DIRECTORIES
+subfolder = 'batch_3'
+dt_string = datetime.now().strftime('%Y-%m-%d_%H.%M')
+dir_checkpoint = 'unet-milesial/.checkpoints/{}/{}/' \
+                  .format(subfolder, dt_string)
+dir_tensorboard = 'unet-milesial/.runs/{}/{}/' \
+                  .format(subfolder, dt_string)
 ################################################################################
 
 def train_net(net,
@@ -59,7 +65,7 @@ def train_net(net,
                             pin_memory=True, 
                             drop_last=True)
 
-    writer = SummaryWriter(comment=f'LR_{lr}_BS_{batch_size}')
+    writer = SummaryWriter(log_dir = dir_tensorboard)
     global_step = 0
 
     logging.info(f'''Starting training:
@@ -86,7 +92,9 @@ def train_net(net,
         with tqdm(total=n_train, 
                   desc=f'Epoch {epoch + 1}/{epochs}', 
                   unit='img',
-                  ascii = True) as pbar:
+                  ascii = True,
+                  leave = False,
+                  bar_format='{l_bar}{bar:60}{r_bar}{bar:-10b}') as pbar:
 
             for batch in train_loader:
                 imgs = batch['image']
@@ -105,7 +113,7 @@ def train_net(net,
                 epoch_loss += loss.item()
                 writer.add_scalar('Loss/train', loss.item(), global_step)
 
-                pbar.set_postfix(**{'loss (batch)': loss.item()})
+                pbar.set_postfix(**{'loss (batch)': round(loss.item(), 5)})
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -140,7 +148,7 @@ def train_net(net,
 
         if save_cp:
             try:
-                os.mkdir(dir_checkpoint)
+                os.makedirs(dir_checkpoint)
                 logging.info('Created checkpoint directory')
             except OSError:
                 pass
@@ -169,7 +177,15 @@ def get_args():
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+    try:
+        os.makedirs(dir_tensorboard)
+    except OSError:
+        pass
+    logging.basicConfig(
+        level = logging.INFO,
+        format = "[%(levelname)s] %(message)s",
+        handlers = [logging.FileHandler(dir_tensorboard + "INFO.log"),
+                    logging.StreamHandler()])
     args = get_args()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device {device}')
@@ -180,7 +196,7 @@ if __name__ == '__main__':
     #   - For 1 class and background, use n_classes=1
     #   - For 2 classes, use n_classes=1
     #   - For N > 2 classes, use n_classes=N
-    net = UNet(n_channels=1, n_classes=1, bilinear=True)
+    net = UNet(n_channels=1, n_classes=1, bilinear=False)
     logging.info(f'Network:\n'
                  f'\t{net.n_channels} input channels\n'
                  f'\t{net.n_classes} output channels (classes)\n'
