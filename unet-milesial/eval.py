@@ -2,10 +2,10 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 
-from dice_loss import dice_coeff, IoU
+from losses import dice_coeff, iou
 
 def eval_net(net, loader, device):
-    """Evaluation without the densecrf with the dice coefficient"""
+    '''Evaluation without the densecrf with the dice coefficient'''
     net.eval()
     mask_type = torch.float32 if net.n_classes == 1 else torch.long
     n_val = len(loader)  # the number of batch
@@ -32,7 +32,7 @@ def eval_net(net, loader, device):
                 pred = torch.sigmoid(mask_pred)
                 pred = (pred > 0.5).float()
                 dice_tot += dice_coeff(pred, true_masks).item()
-                iou_tot += IoU(pred, true_masks).item()
+                iou_tot += iou(pred, true_masks).item()
             pbar.update()
 
     net.train()
