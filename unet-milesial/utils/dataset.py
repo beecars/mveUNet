@@ -33,10 +33,10 @@ class CTMaskDataset(Dataset):
     '''
     def __init__(self, 
                  ct_mask_data,
-                 img_size=(512, 512), 
-                 offset=(150,150), 
-                 output_size=(320, 320), 
-                 augment=True):
+                 img_size = (512, 512), 
+                 offset = (150, 150), 
+                 output_size = (320, 320), 
+                 augment = True):
 
         self.data = ct_mask_data
         self.img_size = img_size
