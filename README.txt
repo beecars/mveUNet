@@ -15,8 +15,12 @@ REVEAL imaging project code
 
 Contents:              
 --------------------------------------------------------------------------------
+unet-3D
+   [TENSORFLOW] 3D UNet implementation in testing...
+
+
 unet-milesial/
-   UNet implementation that makes testing and optimizing easy! 
+   [PYTORCH] UNet implementation that makes testing and optimizing easier!
    https://github.com/milesial/Pytorch-UNet (GNU license)
    -- Run train.py standalone to train the network (no notebooks).
    -- Pass args with train.py to adjust hyperparameters.
@@ -31,7 +35,7 @@ unet-milesial/
          file in /unet-milesial/.runs/.
 
 unet-chuong/
-   UNet implemention adapted from Chuong's files (with significant 
+   [PYTORCH] UNet implemention adapted from Chuong's files (with significant 
    modifications)
    -- unet_ct_test.ipynb   A jupyter-style script for easy testing and
                            simple modification of the UNet training. 
