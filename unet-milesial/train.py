@@ -174,7 +174,7 @@ def get_args():
 if __name__ == '__main__':
     ############################################################################
     ### GET DATA FOR THE TRAINING AND VALIDATION DATASETS
-    patient_idxs = [1, 3, 4, 5, 9]
+    patient_idxs = range(1,22)
     ct_data = []
     for idx in patient_idxs:
         for day_selection in range(1,4):
@@ -182,7 +182,11 @@ if __name__ == '__main__':
                                                 day_selection, 
                                                 mode = 'CT_SPINE',
                                                 no_empties = False)
-            ct_data.extend(matched_data)
+            try:
+                ct_data.extend(matched_data)
+            except:
+                pass
+
     random.shuffle(ct_data)
     ############################################################################
     ### SET LOGGING AND MODEL CKPT DIRECTORIES
