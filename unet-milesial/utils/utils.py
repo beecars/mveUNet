@@ -148,6 +148,9 @@ def matchFilesFromPatient(
     
     # Convert data list to nparray for easier column manipulations.
     data = np.array(data)
+    if len(data) == 0:
+        return
+        
     # Use 'mode' argument to select the desired output from 'data'.
     if mode == 'CT_SPINE':
         output = np.array([data[:,0], data[:,2]]).T
@@ -185,36 +188,3 @@ def plotSomeImages(figures, nrows = 1, ncols=1):
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-def get_spine_mask_v2(mat_fname, model, output_path):
-    mat_data = scio.loadmat(mat_fname)
-    CT = mat_data['ct_hounsfield']
-    pixel_spacing = mat_data['ct_info'][0,0]['PixelSpacing']
-    slice_spacing = mat_data['ct_info'][0,0]['SliceThickness']
-
-    L = CT.shape[-1]
-    spine_masks = np.zeros((L, 320, 320))
-    ct_images = np.zeros((L, 320, 320))
-
-    model.eval()
-    with torch.no_grad():
-        for idx in range(0, L):
-            ct_data = CT[:, :, idx].astype(np.float32)
-            ct_data = ct_data[96:-96, 96:-96]
-            ct_images[idx, :, :] = ct_data
-
-            cts = np.expand_dims(ct_data, axis=0)
-            cts = np.expand_dims(cts, axis=0)
-            cts = torch.from_numpy(cts).cuda()
-
-            outputs = model(cts)
-            masks_probs = torch.squeeze(F.sigmoid(outputs))
-            mask = masks_probs.cpu().numpy()
-            spine_masks[idx, :, :] = mask
-
-    base_fname = os.path.basename(mat_fname)
-    scio.savemat(os.path.join(output_path, 'spine-{}'.format(base_fname)), 
-                 {'mask':np.transpose(spine_masks, [1, 2, 0]),
-                  'ct': np.transpose(ct_images, [1, 2, 0]),
-                  'pixel_spacing': pixel_spacing,
-                  'slice_spacing': slice_spacing})

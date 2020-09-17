@@ -148,6 +148,9 @@ def matchFilesFromPatient(
     
     # Convert data list to nparray for easier column manipulations.
     data = np.array(data)
+    if len(data) == 0:
+        return
+        
     # Use 'mode' argument to select the desired output from 'data'.
     if mode == 'CT_SPINE':
         output = np.array([data[:,0], data[:,2]]).T
