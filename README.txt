@@ -15,10 +15,10 @@ REVEAL imaging project code
 
 Contents:              
 --------------------------------------------------------------------------------
-unet-3D
+unet-3D/     **** NOT WORKING WITH REVEAL CT DATA YET ****
    [TENSORFLOW] 3D UNet implementation in testing...
-
-
+   https://github.com/ellisdg/3DUnetCNN (MIT license)
+   
 unet-milesial/
    [PYTORCH] UNet implementation that makes testing and optimizing easier!
    https://github.com/milesial/Pytorch-UNet (GNU license)
@@ -35,8 +35,7 @@ unet-milesial/
          file in /unet-milesial/.runs/.
 
 unet-chuong/
-   [PYTORCH] UNet implemention adapted from Chuong's files (with significant 
-   modifications)
+   [PYTORCH] UNet implemention adapted from Chuong's files.
    -- unet_ct_test.ipynb   A jupyter-style script for easy testing and
                            simple modification of the UNet training. 
    -- dataset.py     Pytorch Dataset subclass for ct training data.
@@ -51,6 +50,6 @@ unet-chuong/
                      and other tools used throughtout the project. 
 
 unet-multiclass/        **** NOT WORKING WELL ****
-   Largely the same contents as /unet-chuong/ but functions are adapted to 
-   enable multiclass segmentations.
+   [PYTORCH] Largely the same contents as /unet-chuong/ but functions are
+   adapted to allow for multiclass segmentations.
 -------------------------------------------------------------------------------
