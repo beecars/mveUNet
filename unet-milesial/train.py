@@ -46,7 +46,7 @@ def train_net(net,
                             drop_last=True)
     
     global_step = 0
-    writer = SummaryWriter(log_dir = dir_tensorboard)
+    writer = SummaryWriter(log_dir = dir_logging)
     logging.info(f'''Starting training:
         Epochs:          {epochs}
         Batch size:      {batch_size}
@@ -66,13 +66,13 @@ def train_net(net,
         criterion = nn.CrossEntropyLoss()
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                          'min', 
-                                                         patience = 4)
+                                                         patience = 8)
     else:
         criterion = nn.BCEWithLogitsLoss()
         # criterion = MixedLoss(alpha = 10, gamma = 2)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                          'max', 
-                                                         patience = 4)
+                                                         patience = 8)
     best_val_score = 0.0
     save_this_epoch = False
 
@@ -148,7 +148,7 @@ def train_net(net,
 
         if save_cp and save_this_epoch:
             torch.save(net.state_dict(),
-                       dir_checkpoint + f'CP_epoch.pth')
+                       dir_logging + f'CP_epoch.pth')
             logging.info(f'Checkpoint {epoch + 1} saved !')
             save_this_epoch = False
     writer.close()
@@ -181,33 +181,29 @@ if __name__ == '__main__':
             matched_data = matchFilesFromPatient(idx, 
                                                 day_selection, 
                                                 mode = 'CT_SPINE',
-                                                no_empties = False)
+                                                no_empties = True)
             try:
                 ct_data.extend(matched_data)
             except:
+                print('[WARN] Did not find matching image data for Patient',
+                      f'{idx} on Day Index {day_selection}')
                 pass
 
     random.shuffle(ct_data)
     ############################################################################
     ### SET LOGGING AND MODEL CKPT DIRECTORIES
-    subfolder = 'bce_with_empties'
+    subfolder = 'bce_spine_all'
     dt_string = datetime.now().strftime('%Y-%m-%d_%H.%M')
-    dir_checkpoint = 'unet-milesial/.checkpoints/{}/{}/'    \
-                    .format(subfolder, dt_string)
-    dir_tensorboard = 'unet-milesial/.runs/{}/{}/'          \
-                    .format(subfolder, dt_string)
-    
+    dir_logging = 'unet-milesial/.runs/{}/{}/'.format(subfolder, 
+                                                          dt_string)
+    ############################################################################
     try:
-        os.makedirs(dir_tensorboard)
-    except OSError:
-        pass
-    try:
-        os.makedirs(dir_checkpoint)
+        os.makedirs(dir_logging)
     except OSError:
         pass
     logging.basicConfig(level=logging.INFO,
                         format="[%(levelname)s] %(message)s",
-                        handlers=[logging.FileHandler(dir_tensorboard + "INFO.log"),
+                        handlers=[logging.FileHandler(dir_logging + "INFO.log"),
                                   logging.StreamHandler()])
     
     
@@ -240,7 +236,7 @@ if __name__ == '__main__':
                   device=device,
                   val_percent=args.val / 100)
     except KeyboardInterrupt:
-        torch.save(net.state_dict(), dir_checkpoint + 'INTERRUPTED.pth')
+        torch.save(net.state_dict(), dir_logging + 'INTERRUPTED.pth')
         logging.info('Saved interrupt')
         try:
             sys.exit(0)
