@@ -3,8 +3,8 @@ from unittest import TestCase
 import nibabel as nib
 import numpy as np
 
-from unet3d.utils.utils import resize
-from unet3d.utils.sitk_utils import resample_to_spacing
+from ..unet3d.utils.utils import resize
+from ..unet3d.utils.sitk_utils import resample_to_spacing
 
 
 class TestUtils(TestCase):
