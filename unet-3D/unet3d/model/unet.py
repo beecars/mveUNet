@@ -4,7 +4,7 @@ from keras.engine import Input, Model
 from keras.layers import Conv3D, MaxPooling3D, UpSampling3D, Activation, BatchNormalization, PReLU, Deconvolution3D
 from keras.optimizers import Adam
 
-from unet3d.metrics import get_label_dice_coefficient_function, dice_coefficient, weighted_dice_coefficient_loss
+from ..metrics import get_label_dice_coefficient_function, dice_coefficient, weighted_dice_coefficient_loss
 
 K.set_image_data_format("channels_first")
 

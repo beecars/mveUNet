@@ -3,7 +3,7 @@ import os
 import numpy as np
 from nilearn.image import new_img_like
 
-from unet3d.utils.utils import resize, read_image_files
+from .utils.utils import resize, read_image_files
 from .utils import crop_img, crop_img_to, read_image
 
 
