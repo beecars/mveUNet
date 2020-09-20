@@ -43,12 +43,11 @@ def masks2classes(masks):
         object_class = object_class + 1
     return target
 
-def matchFilesFromPatient(
-        patient_idx, 
-        day_selection, 
-        data_folder = os.environ['REVEAL_DATA'],
-        mode='ALL_DATA',
-        no_empties=False):
+def matchFilesFromPatient(patient_idx, 
+                          day_selection, 
+                          data_folder = os.environ['REVEAL_DATA'],
+                          mode='ALL_DATA',
+                          no_empties=False):
     '''
     For a given patient/day, constructs a 2d list containing lines of 
     matching image filepaths. From this list of matching filepaths, a selection 
@@ -170,6 +169,24 @@ def matchFilesFromPatient(
         return
 
     return output.tolist()
+
+def matchFilesFromPatients(patient_idxs, day_idxs, mode = 'CT_SPINE'):
+    ''' Wraps matchFilesFromPatient() to iterate over any number of patients
+        and days. Used to fill a training or validation Dataset like 
+        CTMaskDataset or CTMulticlassDataset.'''
+    
+    data = []
+    for idx in patient_idxs:
+        for day_selection in day_idxs:
+            matched_data = matchFilesFromPatient(idx, 
+                                                 day_selection, 
+                                                 mode = mode,
+                                                 no_empties = True)
+            try:
+                data.extend(matched_data)
+            except:
+                pass
+    return data
 
 def plotSomeImages(figures, nrows = 1, ncols=1):
     """Plot a dictionary of figures.
