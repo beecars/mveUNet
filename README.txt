@@ -34,22 +34,7 @@ unet-milesial/
       -- Added more verbose logging and made hyperparameters save to INFO
          file in /unet-milesial/.runs/.
 
-unet-chuong/
-   [PYTORCH] UNet implemention adapted from Chuong's files.
-   -- unet_ct_test.ipynb   A jupyter-style script for easy testing and
-                           simple modification of the UNet training. 
-   -- dataset.py     Pytorch Dataset subclass for ct training data.
-   -- eval.py        Fucntion(s) used for computing validation scores.
-   -- losses.py      Loss functions for optimization.
-   -- model.py       The UNet model and its sub-parts.
-   -- predict.py     Function(s) for running inference tests on completed
-                     models. 
-   -- train.py       Function optimizing the pytorch model on a single batch. 
-                     A component of the training process (not standalone).
-   -- utils.py       A variety of image reading, data coallating, plotting,
-                     and other tools used throughtout the project. 
-
 unet-multiclass/        **** NOT WORKING WELL ****
-   [PYTORCH] Largely the same contents as /unet-chuong/ but functions are
-   adapted to allow for multiclass segmentations.
+   [PYTORCH] UNet implemention adapted from Chuong's files to allow for 
+             multiclass segmentations.
 -------------------------------------------------------------------------------
