@@ -10,7 +10,8 @@ def dice_coeff(preds, targets):
         s = torch.FloatTensor(1).cuda().zero_()
     else:
         s = torch.FloatTensor(1).zero_()
-
+    
+    i = 0
     for i, c in enumerate(zip(preds, targets)):
         s = s + DiceCoeff().forward(c[0], c[1])
 
