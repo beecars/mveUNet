@@ -13,12 +13,12 @@ from tqdm import tqdm
 
 from eval import eval_net
 from unet import UNet
-from losses import MixedLoss
+from losses import FocalLoss, MixedLoss
 
 from torch.utils.tensorboard import SummaryWriter
-from utils.dataset import CTMaskDataset
-from utils.utils import matchFilesFromPatient
-from torch.utils.data import DataLoader, random_split
+from utils.dataset import CTMaskDataset, CTMulticlassDataset
+from utils.utils import matchFilesFromPatients
+from torch.utils.data import DataLoader
 
 
 def train_net(net,
@@ -26,53 +26,64 @@ def train_net(net,
               epochs = 10,
               batch_size = 1,
               lr = 0.0001,
-              val_percent = 0.1,
               save_cp = True):
 
-    dataset = CTMaskDataset(ct_data)
-    n_val = int(len(dataset) * val_percent)
-    n_train = len(dataset) - n_val
-    train, val = random_split(dataset, [n_train, n_val])
-    train_loader = DataLoader(train, 
+    if net.n_classes > 1: # MULTICLASS
+        train_dataset = CTMulticlassDataset(train_data)
+        val_dataset = CTMulticlassDataset(val_data)
+        
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.RMSprop(net.parameters(), 
+                                  lr = lr, 
+                                  weight_decay = 1e-8, 
+                                  momentum = 0.9)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
+                                                         'min', 
+                                                         patience = 8)
+    else: # SINGLE-CLASS
+        train_dataset = CTMaskDataset(train_data)
+        val_dataset = CTMaskDataset(val_data)
+        
+        criterion = nn.BCEWithLogitsLoss()
+        # criterion = FocalLoss(alpha = 1, gamma = 2)
+        # criterion = MixedLoss(alpha = 10, gamma = 2)
+        optimizer = optim.RMSprop(net.parameters(), 
+                                  lr = lr, 
+                                  weight_decay = 1e-8, 
+                                  momentum = 0.9)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
+                                                         'max', 
+                                                         patience = 8)
+    
+    train_loader = DataLoader(train_dataset, 
                               batch_size=batch_size, 
                               shuffle=True, 
                               num_workers=8, 
                               pin_memory=True)
-    val_loader = DataLoader(val, 
+    val_loader = DataLoader(val_dataset, 
                             batch_size=batch_size, 
                             shuffle=False, 
                             num_workers=8, 
                             pin_memory=True, 
                             drop_last=True)
     
-    global_step = 0
+    n_train = len(train_dataset)
+    n_val = len(val_dataset)
     writer = SummaryWriter(log_dir = dir_logging)
     logging.info(f'''Starting training:
         Epochs:          {epochs}
         Batch size:      {batch_size}
+        Loss Function:   {criterion.__class__.__name__}
+        Optimizer:       {optimizer.__class__.__name__}
+        Scheduler:       {scheduler.__class__.__name__}
         Learning rate:   {lr}
         Training size:   {n_train}
         Validation size: {n_val}
         Checkpoints:     {save_cp}
         Device:          {device.type}
     ''')
-
-    optimizer = optim.RMSprop(net.parameters(), 
-                              lr=lr, 
-                              weight_decay=1e-8, 
-                              momentum=0.9)
     
-    if net.n_classes > 1:
-        criterion = nn.CrossEntropyLoss()
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
-                                                         'min', 
-                                                         patience = 8)
-    else:
-        criterion = nn.BCEWithLogitsLoss()
-        # criterion = MixedLoss(alpha = 10, gamma = 2)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
-                                                         'max', 
-                                                         patience = 8)
+    global_step = 0
     best_val_score = 0.0
     save_this_epoch = False
 
@@ -80,12 +91,12 @@ def train_net(net,
         net.train()
 
         epoch_loss = 0
-        with tqdm(total=n_train, 
-                  desc=f'Epoch {epoch + 1}/{epochs}', 
-                  unit='img',
+        with tqdm(total = n_train, 
+                  desc = f'Epoch {epoch + 1}/{epochs}', 
+                  unit = 'img',
                   ascii = True,
                   leave = False,
-                  bar_format='{l_bar}{bar:60}{r_bar}{bar:-10b}') as pbar:
+                  bar_format = '{l_bar}{bar:60}{r_bar}{bar:-10b}') as pbar:
 
             for batch in train_loader:
                 imgs = batch['image']
@@ -165,34 +176,26 @@ def get_args():
                         help='Learning rate', dest='lr')
     parser.add_argument('-f', '--load', dest='load', type=str, default=False,
                         help='Load model from a .pth file')
-    parser.add_argument('-v', '--validation', dest='val', type=float, default=10.0,
-                        help='Percent of the data that is used as validation (0-100)')
-
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     ############################################################################
-    ### GET DATA FOR THE TRAINING AND VALIDATION DATASETS
-    patient_idxs = range(1,22)
-    ct_data = []
-    for idx in patient_idxs:
-        for day_selection in range(1,4):
-            matched_data = matchFilesFromPatient(idx, 
-                                                day_selection, 
-                                                mode = 'CT_SPINE',
-                                                no_empties = True)
-            try:
-                ct_data.extend(matched_data)
-            except:
-                print('[WARN] Did not find matching image data for Patient',
-                      f'{idx} on Day Index {day_selection}')
-                pass
+    ### GET DATA FOR THE TRAINING AND VALIDATION DATASETS.
+    ### Validation & training sets should be divided by patient.
+    train_idxs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 18,
+                  19, 20, 21]
+    train_data = matchFilesFromPatients(train_idxs, range(1,4))
+    random.shuffle(train_data)
 
-    random.shuffle(ct_data)
+    val_idxs  = [16, 17]
+    val_data = matchFilesFromPatients(val_idxs, range(1,4))
+    random.shuffle(val_data)
+
     ############################################################################
-    ### SET LOGGING AND MODEL CKPT DIRECTORIES
-    subfolder = 'bce_spine_all'
+    ### SET LOGGING DIRECTORY 
+    ### Model checkpoint and interrupt also saved here.
+    subfolder = 'bce'
     dt_string = datetime.now().strftime('%Y-%m-%d_%H.%M')
     dir_logging = 'unet-milesial/.runs/{}/{}/'.format(subfolder, 
                                                           dt_string)
@@ -229,12 +232,12 @@ if __name__ == '__main__':
     # cudnn.benchmark = True
 
     try:
-        train_net(net=net,
-                  epochs=args.epochs,
-                  batch_size=args.batchsize,
-                  lr=args.lr,
-                  device=device,
-                  val_percent=args.val / 100)
+        train_net(net = net,
+                  epochs = args.epochs,
+                  batch_size = args.batchsize,
+                  lr = args.lr,
+                  device = device)
+
     except KeyboardInterrupt:
         torch.save(net.state_dict(), dir_logging + 'INTERRUPTED.pth')
         logging.info('Saved interrupt')
