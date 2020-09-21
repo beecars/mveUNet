@@ -37,4 +37,4 @@ unet-milesial/
 unet-multiclass/        **** NOT WORKING WELL ****
    [PYTORCH] UNet implemention adapted from Chuong's files to allow for 
              multiclass segmentations.
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
