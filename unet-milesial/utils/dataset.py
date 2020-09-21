@@ -27,6 +27,25 @@ def readBinImage(fname, im_size=(512,512), as_tensor=False):
             return np.array(img).T
 
 
+class CTVolumeDataset(Dataset):
+    ''' Dataset for containing a CT volume as ordered slices. For prediction.
+    Input data should be a 1D list of: [ct filepath]
+    '''
+    def __init__(self,
+                 ct_data):
+        
+        self.data = ct_data
+
+    def __getitem__(self, idx):
+        ct_fname = self.data[idx]
+        ct = readBinImage(ct_fname)
+        ct = torch.from_numpy(ct).unsqueeze(0).float() 
+
+        return {'image': ct}
+
+    def __len__(self):
+        return len(self.data)
+
 class CTMaskDataset(Dataset):
     ''' Single class training Dataset.
     Input data should be a 2D list of: [ct filepath, mask filepath]. 
