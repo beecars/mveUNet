@@ -55,6 +55,8 @@ def matchFilesFromPatient(patient_idx,
     this function. Manipulates columns as ndarray but returns as list.
 
     Modes:
+    'CT_ONLY': gets only the CT files.
+        RETURNS: [[str(ct)]]
     'CT_SPINE': matches ct files and spine segmentation labels.
         RETURNS: [[str(ct)], 
                   [str(spine mask)]]
@@ -151,7 +153,9 @@ def matchFilesFromPatient(patient_idx,
         return
         
     # Use 'mode' argument to select the desired output from 'data'.
-    if mode == 'CT_SPINE':
+    if mode == 'CT_ONLY':
+        output = np.array(data[:,0])
+    elif mode == 'CT_SPINE':
         output = np.array([data[:,0], data[:,2]]).T
     elif mode == 'CT_PT_SPINE':
         output = np.array([data[:,0], data[:,1], data[:,2]]).T                    
