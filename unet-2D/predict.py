@@ -87,7 +87,7 @@ def get_args():
 if __name__ == "__main__":
     ############################################################################
     ### SET PREDICTION VOLUME DIRECTORY
-    dir_save = 'unet-milesial/.predictions/'
+    dir_save = 'unet-2D/.predictions/'
     ############################################################################
     try:
         os.makedirs(dir_save)

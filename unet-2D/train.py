@@ -197,7 +197,7 @@ if __name__ == '__main__':
     ### Model checkpoint and interrupt also saved here.
     subfolder = 'bce'
     dt_string = datetime.now().strftime('%Y-%m-%d_%H.%M')
-    dir_logging = 'unet-milesial/.runs/{}/{}/'.format(subfolder, 
+    dir_logging = 'unet-2D/.runs/{}/{}/'.format(subfolder, 
                                                           dt_string)
     ############################################################################
     try:
