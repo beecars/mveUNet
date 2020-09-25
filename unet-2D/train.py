@@ -28,7 +28,7 @@ def train_net(net,
               lr = 0.0001,
               save_cp = True):
 
-    if net.n_classes > 1: # MULTICLASS
+    if net.n_classes > 1: 
         train_dataset = CTMulticlassDataset(train_data)
         val_dataset = CTMulticlassDataset(val_data)
         
@@ -40,7 +40,7 @@ def train_net(net,
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                          'min', 
                                                          patience = 8)
-    else: # SINGLE-CLASS
+    else: 
         train_dataset = CTMaskDataset(train_data)
         val_dataset = CTMaskDataset(val_data)
         
@@ -107,10 +107,10 @@ def train_net(net,
                 true_masks = true_masks.to(device=device, dtype=mask_type)
 
                 masks_pred = net(imgs)
+                
                 loss = criterion(masks_pred, true_masks)
                 epoch_loss += loss.item()
                 writer.add_scalar('Loss/train', loss.item(), global_step)
-
                 pbar.set_postfix(**{'loss (batch)': round(loss.item(), 5)})
 
                 optimizer.zero_grad()
@@ -120,7 +120,9 @@ def train_net(net,
 
                 pbar.update(imgs.shape[0])
                 global_step += 1
+                
                 if global_step % (n_train // (5 * batch_size)) == 0:
+                    # validation round
                     ''' LOGGING OF WEIGHTS: DISABLED
                     for tag, value in net.named_parameters():
                         tag = tag.replace('.', '/')
@@ -174,12 +176,15 @@ def get_args():
                         help='Batch size', dest='batchsize')
     parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.0001,
                         help='Learning rate', dest='lr')
-    parser.add_argument('-f', '--load', dest='load', type=str, default=False,
+    parser.add_argument('-m', '--model', dest='model', type=str, default=False,
                         help='Load model from a .pth file')
+    parser.add_argument('-f', '--folder', dest='folder', type=str, default='temp',
+                        help='Subfolder to output logs and model ckpts.')
     return parser.parse_args()
 
 
 if __name__ == '__main__':
+    args = get_args()
     ############################################################################
     ### GET DATA FOR THE TRAINING AND VALIDATION DATASETS.
     ### Validation & training sets should be divided by patient.
@@ -195,7 +200,7 @@ if __name__ == '__main__':
     ############################################################################
     ### SET LOGGING DIRECTORY 
     ### Model checkpoint and interrupt also saved here.
-    subfolder = 'bce'
+    subfolder = args.folder
     dt_string = datetime.now().strftime('%Y-%m-%d_%H.%M')
     dir_logging = 'unet-2D/.runs/{}/{}/'.format(subfolder, 
                                                           dt_string)
@@ -209,8 +214,6 @@ if __name__ == '__main__':
                         handlers=[logging.FileHandler(dir_logging + "INFO.log"),
                                   logging.StreamHandler()])
     
-    
-    args = get_args()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device {device}')
 
@@ -221,11 +224,9 @@ if __name__ == '__main__':
                  f'\t{net.n_classes} output channels (classes)\n'
                  f'\t{"Bilinear" if net.bilinear else "Transposed conv"} upscaling')
 
-    if args.load:
-        net.load_state_dict(
-            torch.load(args.load, map_location=device)
-        )
-        logging.info(f'Model loaded from {args.load}')
+    if args.model:
+        net.load_state_dict(torch.load(args.model, map_location = device))
+        logging.info(f'Model loaded from {args.model}')
 
     net.to(device=device)
     # faster convolutions, but more memory
