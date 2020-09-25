@@ -5,7 +5,6 @@ import os
 import numpy as np
 import torch
 import torch.nn.functional as F
-from PIL import Image
 from torch.utils import data
 from torchvision import transforms
 from tqdm.std import tqdm
@@ -15,16 +14,20 @@ from utils.dataset import CTVolumeDataset
 from utils.utils import matchFilesFromPatient
 
 
-def predict_volume(net,
-                   device,
-                   ct_data,
-                   p_threshold = 0.5):
+def predict_vol_from_seq(net,
+                         device,
+                         ct_data,
+                         threshold = True,
+                         p_threshold = 0.5):
+    ''' This function takes a sequence (list) of CT scans, runs them through
+    a UNet model, and assembles and returns a prediction "volume" data object.
+    '''
     net.eval()
 
     volume = CTVolumeDataset(ct_data)
     n_cts = len(volume)
     img_shape = volume[0]['image'].size()[1:3]
-    probs_volume = torch.empty(n_cts, img_shape[0], img_shape[1])
+    probs_volume = torch.empty(img_shape[0], img_shape[1], n_cts)
     
     with tqdm(total = n_cts, 
                   desc = f'Predicting Volume', 
@@ -47,13 +50,17 @@ def predict_volume(net,
                 else:
                     probs = torch.sigmoid(output)
 
-                probs_volume[i] = probs
+                probs_volume[:,:, i] = probs
                 
                 pbar.update()
 
-            mask_volume = probs_volume > p_threshold
-
-    return mask_volume.numpy().astype(int)
+            if threshold:
+                probs_volume = probs_volume > p_threshold
+            else:
+                probs_volume = probs_volume
+    
+    return probs_volume.numpy().astype(float)
+    
 
 
 def get_args():
@@ -103,7 +110,7 @@ if __name__ == "__main__":
     logging.info(f'Using device {device}')
     logging.info("Starting volume prediction...")
 
-    volume = predict_volume(net, device, ct_data)
+    volume = predict_vol_from_seq(net, device, ct_data)
     np.save(dir_save + args.filename, volume)
 
     logging.info(f"Prediction saved to {dir_save}{args.filename}")
