@@ -1,35 +1,45 @@
-from os.path import splitext
-from os import listdir
-import numpy as np
-from glob import glob
-import torch
-from torch.utils.data import Dataset
-import logging
-from PIL import Image
 import random
 
-def readUCharImage(fname, im_size=(512,512), as_tensor=False):
-    with open(fname, 'rb') as f:
-        rawData = f.read()
-        img = Image.frombytes('L', im_size, rawData)
-        if as_tensor:
-            return torch.from_numpy(np.array(img)).float()
-        else:
-            return np.array(img)
-        
-def readBinImage(fname, im_size=(512,512), as_tensor=False):
-    with open(fname, 'rb') as f:
-        rawData = f.read()
-        img = Image.frombytes('I', im_size, rawData)
-        if as_tensor:
-            return torch.from_numpy(np.array(img).T).float()
-        else:
-            return np.array(img).T
+import numpy as np
+from scipy.io import loadmat
 
+import torch
+from torch.utils.data import Dataset
+from utils.utils import readUCharImage, readBinImage
 
 class CTVolumeDataset(Dataset):
-    ''' Dataset for containing a CT volume as ordered slices. For prediction.
-    Input data should be a 1D list of: [ct filepath]
+    '''
+    A CT volume Dataset genereated from one of the following: a 3D numpy 
+    array, a MATLAB .mat file, or numpy .npy file.
+    @params:
+        x = either a 3D np array data OR a filetype, depending on mode.
+        mode = 'npy', 'mat', or 'data' (default data)
+    '''
+    def __init__(self,
+                 x,
+                 mode = 'data'):
+        if mode == 'data':
+            self.volume = x
+        elif mode == 'mat':                                  
+            mat_dict = loadmat(x)                            
+            self.volume = list(mat_dict.items())[-1][-1]  # last tuple last dict
+        elif mode =='npy':                                  
+            self.volume = np.load(x)
+    
+    def __getitem__(self, idx):
+        return torch.from_numpy(self.volume[:, :, idx]).unsqueeze(0).float() 
+
+    def __len__(self):
+        return self.volume.shape[-1]    # length is last dimension of shape
+
+class CTSequenceDataset(Dataset):
+    ''' 
+    Dataset for containing a SINGLE CT volume as an ordered list of files 
+    representing ordered CT slices. Input data should be an ordrered 1D list of 
+    filepath.
+    @params: 
+        ct_data = a specific data list generated for the REVEAL CT data
+                  by using the matchFilesFromPatients() function. 
     '''
     def __init__(self,
                  ct_data):
@@ -47,9 +57,18 @@ class CTVolumeDataset(Dataset):
         return len(self.data)
 
 class CTMaskDataset(Dataset):
-    ''' Single class training Dataset.
-    Input data should be a 2D list of: [ct filepath, mask filepath]. 
+    ''' 
+    Single class training Dataset for REVEAL CT data. 
+    Input data should be . 
     Has augment function which randomly crops and flips at __getitem__ retreival.
+    @params: 
+        ct_mask_data = a 2D list of: [ct filepath, mask filepath]. Generated 
+                        for the REVEAL CT data using the matchFilesFromPatients() 
+                        function
+        img_size = the original size of the training images/masks
+        offset = the potential offset for translation augmentation in pixels
+        output_size = the size returned by the class __getitem__ method
+        augment = boolean, whether or not to augment the data upon retreival
     '''
     def __init__(self, 
                  ct_mask_data,
@@ -93,9 +112,18 @@ class CTMaskDataset(Dataset):
 
 
 class CTMulticlassDataset(Dataset):
-    ''' Multiple class training Dataset.
+    ''' 
+    Multiple class training Dataset.
     Input data should be a 2D list of: [ct_path, mask1_path, mask2_path, ...]. 
     Has augment function which randomly crops and flips at __getitem__ retreival.
+    @params: 
+        ct_mask_data = a 2D list of: [ct filepath, mask filepath]. Generated 
+                        for the REVEAL CT data using the matchFilesFromPatients() 
+                        function
+        img_size = the original size of the training images/masks
+        offset = the potential offset for translation augmentation in pixels
+        output_size = the size returned by the class __getitem__ method
+        augment = boolean, whether or not to augment the data upon retreival
     '''
     def __init__(self, 
                  ct_multimask_data,
@@ -148,65 +176,3 @@ class CTMulticlassDataset(Dataset):
         return {'image': ct, 
                 'target': mask_stack
                }
-
-class BasicDataset(Dataset):
-    def __init__(self, imgs_dir, masks_dir, scale=1, mask_suffix=''):
-        self.imgs_dir = imgs_dir
-        self.masks_dir = masks_dir
-        self.scale = scale
-        self.mask_suffix = mask_suffix
-        assert 0 < scale <= 1, 'Scale must be between 0 and 1'
-
-        self.ids = [splitext(file)[0] for file in listdir(imgs_dir)
-                    if not file.startswith('.')]
-        logging.info(f'Creating dataset with {len(self.ids)} examples')
-
-    def __len__(self):
-        return len(self.ids)
-
-    @classmethod
-    def preprocess(cls, pil_img, scale):
-        w, h = pil_img.size
-        newW, newH = int(scale * w), int(scale * h)
-        assert newW > 0 and newH > 0, 'Scale is too small'
-        pil_img = pil_img.resize((newW, newH))
-
-        img_nd = np.array(pil_img)
-
-        if len(img_nd.shape) == 2:
-            img_nd = np.expand_dims(img_nd, axis=2)
-
-        # HWC to CHW
-        img_trans = img_nd.transpose((2, 0, 1))
-        if img_trans.max() > 1:
-            img_trans = img_trans / 255
-
-        return img_trans
-
-    def __getitem__(self, i):
-        idx = self.ids[i]
-        mask_file = glob(self.masks_dir + idx + self.mask_suffix + '.*')
-        img_file = glob(self.imgs_dir + idx + '.*')
-
-        assert len(mask_file) == 1, \
-            f'Either no mask or multiple masks found for the ID {idx}: {mask_file}'
-        assert len(img_file) == 1, \
-            f'Either no image or multiple images found for the ID {idx}: {img_file}'
-        mask = Image.open(mask_file[0])
-        img = Image.open(img_file[0])
-
-        assert img.size == mask.size, \
-            f'Image and mask {idx} should be the same size, but are {img.size} and {mask.size}'
-
-        img = self.preprocess(img, self.scale)
-        mask = self.preprocess(mask, self.scale)
-
-        return {
-            'image': torch.from_numpy(img).type(torch.FloatTensor),
-            'mask': torch.from_numpy(mask).type(torch.FloatTensor)
-        }
-
-
-class CarvanaDataset(BasicDataset):
-    def __init__(self, imgs_dir, masks_dir, scale=1):
-        super().__init__(imgs_dir, masks_dir, scale, mask_suffix='_mask')
