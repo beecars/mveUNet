@@ -23,7 +23,7 @@ def predict_vol_from_seq(net,
     assembles and returns a prediction "volume" data object.
     @params:
         ct_data = a specific data list generated for the REVEAL CT data
-                  by using the matchFilesFromPatients() function. 
+                  by using the matchFilesFromPatient() function. 
         threshold = boolean, if False volume will be returned as float 
                     prediction values. If true, volume will be thresholded and
                     returned as a binary prediction mask.
