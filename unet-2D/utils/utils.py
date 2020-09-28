@@ -59,6 +59,31 @@ def readFloatImage(fname, im_size=(512,512)):
         img = Image.frombytes('F', im_size, rawData)
         return np.array(img)
 
+def vol_from_seq(ct_data, mode='bin'):
+    '''
+    Creates 3D volume array from ordered list of CT scans. 
+    @params:
+        ct_data = a specific data list generated for the REVEAL CT data
+                  by using the matchFilesFromPatients() function. 
+        mode = 'bin' or 'uchar' to change file type
+    @returns:
+        a 3D volume nparray
+    '''
+    n_cts = len(ct_data)
+    if mode == 'bin':
+        img_size = readBinImage(ct_data[0]).shape
+        volume = np.empty([img_size[0], img_size[1], n_cts])
+        for i, file in enumerate(ct_data):
+            scan = readBinImage(file)
+            volume[:, :, i] = scan
+    else:
+        img_size = readUCharImage(ct_data[0]).shape
+        volume = np.empty([img_size[0], img_size[1], n_cts])
+        for i, file in enumerate(ct_data):
+            scan = readUCharImage(file)
+            volume[:, :, i] = scan
+    return volume
+
 def masks2classes(masks):
     ''' 
     From multiple masks representing multiple classes, creates a single-mask 
@@ -125,6 +150,8 @@ def matchFilesFromPatient(patient_idx,
     'CT_PT': matches ct files and pt files.
         RETURNS: [[str(ct)],
                   [str(pt)]]
+    'SPINE_MASK_ONLY': gets only the spine ground truth masks.
+        RETURNS: [[str(spine mask)]]
     'ALL_DATA': matches across all the data sources.
         RETURNS: [[str(ct)], 
                   [str(pt)],
@@ -206,6 +233,8 @@ def matchFilesFromPatient(patient_idx,
         output = np.array(data[:,0])
     elif mode == 'CT_SPINE':
         output = np.array([data[:,0], data[:,2]]).T
+    elif mode == 'SPINE_MASK_ONLY':
+        output = np.array(data[:,2])
     elif mode == 'CT_PT_SPINE':
         output = np.array([data[:,0], data[:,1], data[:,2]]).T                    
     elif mode == 'CT_SPINE_STERNUM_PELVIS':
@@ -248,6 +277,61 @@ def matchFilesFromPatients(patient_idxs, day_idxs, mode = 'CT_SPINE'):
                 volume_idxs.append([patient_idx, day_idx])
 
     return files, volume_idxs
+
+def generateCrossvalidationSets():
+    '''
+    Generates cross-validation datasets from the available reveal CT data.
+    This could be done more elegantly, like with random sampling to 
+    populate the folds, but it would take a few hours to generalize and it's
+    not worth it at 2:11am. The key is that a patient should never appear in 
+    more than one fold, and each fold should have the same number of volumes. 
+    '''
+    # k folds
+    fold1 = [1, 2]            # 5 total volumes w/ spine seg.
+    fold2 = [3, 6]            # 5 total volumes w/ spine seg.
+    fold3 = [4, 7, 8]         # 5 total volumes w/ spine seg.
+    fold4 = [5, 10, 11]       # 5 total volumes w/ spine seg.
+    fold5 = [9, 12, 13]       # 5 total volumes w/ spine seg.
+    fold6 = [14, 16, 17]      # 5 total volumes w/ spine seg.
+    fold7 = [18, 19, 20]      # 5 total volumes w/ spine seg.
+
+    # remember the val_idxs are used almost exclusively in the predict_volumes
+    # function to parse the ct_data by patient and day index...
+    val_data1, val1_idxs = matchFilesFromPatients(fold1, range(1,4))
+    val_data2, val2_idxs = matchFilesFromPatients(fold2, range(1,4))
+    val_data3, val3_idxs = matchFilesFromPatients(fold3, range(1,4))
+    val_data4, val4_idxs = matchFilesFromPatients(fold4, range(1,4))
+    val_data5, val5_idxs = matchFilesFromPatients(fold5, range(1,4))
+    val_data6, val6_idxs = matchFilesFromPatients(fold6, range(1,4))
+    val_data7, val7_idxs = matchFilesFromPatients(fold7, range(1,4))
+    
+    # one fold absent from each split
+    trn_split1 = fold2 + fold3 + fold4 + fold5 + fold6 + fold7
+    trn_split2 = fold1 + fold3 + fold4 + fold5 + fold6 + fold7
+    trn_split3 = fold1 + fold2 + fold4 + fold5 + fold6 + fold7
+    trn_split4 = fold1 + fold2 + fold3 + fold5 + fold6 + fold7
+    trn_split5 = fold1 + fold2 + fold3 + fold4 + fold6 + fold7
+    trn_split6 = fold1 + fold2 + fold3 + fold4 + fold5 + fold7
+    trn_split7 = fold1 + fold2 + fold3 + fold4 + fold5 + fold6
+
+    train_data1, _ = matchFilesFromPatients(trn_split1, range(1,4))
+    train_data2, _ = matchFilesFromPatients(trn_split2, range(1,4))
+    train_data3, _ = matchFilesFromPatients(trn_split3, range(1,4))
+    train_data4, _ = matchFilesFromPatients(trn_split4, range(1,4))
+    train_data5, _ = matchFilesFromPatients(trn_split5, range(1,4))
+    train_data6, _ = matchFilesFromPatients(trn_split6, range(1,4))
+    train_data7, _ = matchFilesFromPatients(trn_split7, range(1,4))
+
+    val_datas = [val_data1, val_data2, val_data3, val_data4, 
+                 val_data5, val_data6, val_data7]
+    
+    val_idxs = [val1_idxs, val2_idxs, val3_idxs, val4_idxs, 
+                val5_idxs, val6_idxs, val7_idxs]
+
+    train_datas = [train_data1, train_data2, train_data3, train_data4, 
+                   train_data5, train_data6, train_data7]
+
+    return val_datas, val_idxs, train_datas
 
 def plotSomeImages(figures, nrows = 1, ncols=1):
     '''
