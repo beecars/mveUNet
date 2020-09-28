@@ -12,11 +12,11 @@ from tqdm import tqdm
 
 from eval import eval_volumes
 from unet import UNet
-from losses import FocalLoss, MixedLoss
+from losses import FocalLoss
 
 from torch.utils.tensorboard import SummaryWriter
 from utils.dataset import CTMaskDataset, CTMulticlassDataset
-from utils.utils import matchFilesFromPatients
+from utils.utils import matchFilesFromPatients, generateCrossvalidationSets
 from torch.utils.data import DataLoader
 
 
@@ -44,7 +44,7 @@ def train_net(net,
                                   momentum = 0.9)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                          'min', 
-                                                         patience = 8)
+                                                         patience = 5)
     else:   # for single class training
         train_dataset = CTMaskDataset(train_data)
         val_dataset = CTMaskDataset(val_data)
@@ -58,19 +58,15 @@ def train_net(net,
                                   momentum = 0.9)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                          'max', 
-                                                         patience = 8)
+                                                         patience = 5)
     
     train_loader = DataLoader(train_dataset, 
                               batch_size=batch_size, 
                               shuffle=True, 
                               num_workers=8, 
                               pin_memory=True)
-    val_loader = DataLoader(val_dataset, 
-                            batch_size=batch_size, 
-                            shuffle=False, 
-                            num_workers=8, 
-                            pin_memory=True, 
-                            drop_last=True)
+    # val_loader... fear not, the val_loader lives inside the eval_volumes 
+    #               fucntion. why?
     
     n_train = len(train_dataset)
     n_val = len(val_dataset)
@@ -78,7 +74,6 @@ def train_net(net,
     
     if split == 1:
         logging.info(f'Training initialization:\n'
-                     f'\tCross-Validation Split {split}/{folds}\n'
                      f'\tEpochs:          {epochs}\n'
                      f'\tBatch size:      {batch_size}\n'
                      f'\tLoss Function:   {criterion.__class__.__name__}\n'
@@ -86,10 +81,14 @@ def train_net(net,
                      f'\tScheduler:       {scheduler.__class__.__name__}\n'
                      f'\tLearning rate:   {lr}\n'
                      f'\tCheckpoints:     {save_cp}\n'
-                     f'\tDevice:          {device.type}')
-    logging.info(f'\tCross-Validation Split {split}/{folds}\n'
+                     f'\tDevice:          {device.type}'
                     f'\tTraining size:   {n_train}\n'
                     f'\tValidation size: {n_val}')
+    if folds > 1: # if running as "leave some out" these wont appear
+        logging.info(f'\tCross-Validation Split {split}/{folds}\n')
+        if split > 1: # uninspired logic to avoid info redundancy in 1st split
+            logging.info(f'\tTraining size:   {n_train}\n'
+                         f'\tValidation size: {n_val}')
 
     global_step = 0
 
@@ -134,7 +133,9 @@ def train_net(net,
                 pbar.update(imgs.shape[0])
                 global_step += 1
                 
-                if i == (len(train_loader) - 1):
+                if ((i == (len(train_loader) - 1))
+                    or (i == round(len(train_loader)/3))
+                    or (i == round(len(train_loader)*2/3))):
                     # validation round
                     dice, iou = eval_volumes(net, 
                                             device,
@@ -167,8 +168,9 @@ def train_net(net,
         logging.info(f'Saved model state at end of split {split}')
     writer.close()
 
-# args to use if this file is called as a stand-alone script
+
 def get_args():
+    # args to use if this file is called as a stand-alone script
     parser = argparse.ArgumentParser(description='Train the UNet on images and target masks',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-e', '--epochs', metavar='E', type=int, default=10,
@@ -201,58 +203,17 @@ if __name__ == '__main__':
                     handlers=[logging.FileHandler(dir_logging + "INFO.log"),
                                 logging.StreamHandler()])
     ############################################################################
-    ### GET DATA FOR THE CROSS-VALIDATION DATASETS.
-    ### Cross-validation & training sets should be divided by patient.
-    ### This could be done much more elegantly but I didn't want to spend 4 
-    ### hours generalizing it...
-    fold1 = [1, 2]            # 5 total volumes w/ spine seg.
-    fold2 = [3, 6]            # 5 total volumes w/ spine seg.
-    fold3 = [4, 7, 8]         # 5 total volumes w/ spine seg.
-    fold4 = [5, 10, 11]       # 5 total volumes w/ spine seg.
-    fold5 = [9, 12, 13]       # 5 total volumes w/ spine seg.
-    fold6 = [14, 16, 17]      # 5 total volumes w/ spine seg.
-    fold7 = [18, 19, 20]      # 5 total volumes w/ spine seg.
-
-    val_data1, val1_idxs = matchFilesFromPatients(fold1, range(1,4))
-    val_data2, val2_idxs = matchFilesFromPatients(fold2, range(1,4))
-    val_data3, val3_idxs = matchFilesFromPatients(fold3, range(1,4))
-    val_data4, val4_idxs = matchFilesFromPatients(fold4, range(1,4))
-    val_data5, val5_idxs = matchFilesFromPatients(fold5, range(1,4))
-    val_data6, val6_idxs = matchFilesFromPatients(fold6, range(1,4))
-    val_data7, val7_idxs = matchFilesFromPatients(fold7, range(1,4))
-    
-    trn_split1 = fold2 + fold3 + fold4 + fold5 + fold6 + fold7
-    trn_split2 = fold1 + fold3 + fold4 + fold5 + fold6 + fold7
-    trn_split3 = fold1 + fold2 + fold4 + fold5 + fold6 + fold7
-    trn_split4 = fold1 + fold2 + fold3 + fold5 + fold6 + fold7
-    trn_split5 = fold1 + fold2 + fold3 + fold4 + fold6 + fold7
-    trn_split6 = fold1 + fold2 + fold3 + fold4 + fold5 + fold7
-    trn_split7 = fold1 + fold2 + fold3 + fold4 + fold5 + fold6
-
-    train_data1, _ = matchFilesFromPatients(trn_split1, range(1,4))
-    train_data2, _ = matchFilesFromPatients(trn_split2, range(1,4))
-    train_data3, _ = matchFilesFromPatients(trn_split3, range(1,4))
-    train_data4, _ = matchFilesFromPatients(trn_split4, range(1,4))
-    train_data5, _ = matchFilesFromPatients(trn_split5, range(1,4))
-    train_data6, _ = matchFilesFromPatients(trn_split6, range(1,4))
-    train_data7, _ = matchFilesFromPatients(trn_split7, range(1,4))
-
-    val_datas = [val_data1, val_data2, val_data3, val_data4, 
-                 val_data5, val_data6, val_data7]
-    
-    val_idxs = [val1_idxs, val2_idxs, val3_idxs, val4_idxs, 
-                val5_idxs, val6_idxs, val7_idxs]
-
-    train_datas = [train_data1, train_data2, train_data3, train_data4, 
-                   train_data5, train_data6, train_data7]
+    ### FOR CROSS VALIDATION
+    val_datas, val_idxs, train_datas = generateCrossvalidationSets()
+    folds = 7
     ############################################################################
-    ### For training on all data (testing only)
-    # trn_all = fold1 + fold2 + fold3 + fold4 + fold5 + fold6 + fold7
-    # train_data, _ = matchFilesFromPatients(trn_all, range(1,4))
-    # train_datas = [train_data]
-    # val_data, val_idxs = matchFilesFromPatients(fold1, range(1,4))
-    # val_datas = [val_data]
-    # val_idxs = [val_idxs]
+    ### FOR LEAVE ONE/SOME OUT
+    # train_patients = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+    #               18, 19, 20, 21]
+    # val_patients = [17]
+    # train_datas, _ = matchFilesFromPatients(train_patients, range(1,4))
+    # val_datas, val_idxs = matchFilesFromPatients(val_patients, range(1,4))
+    # folds = 1
     ############################################################################
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -283,7 +244,7 @@ if __name__ == '__main__':
                       epochs = args.epochs,
                       batch_size = args.batchsize,
                       lr = args.lr,
-                      folds = 7,
+                      folds = folds,
                       current_split = split)
             
         except KeyboardInterrupt:
