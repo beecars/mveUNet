@@ -1,12 +1,21 @@
 import os
 from pathlib import Path
 import numpy as np
-import scipy.io as scio
 import matplotlib.pyplot as plt
 import torch
 from PIL import Image
 
 def readUCharImage(fname, im_size=(512,512), as_tensor=False):
+    '''
+    Reads in a unsigned character image file to a numpy array or a tensor.
+    @params: 
+        fname = the string filepath of the Uchar image
+        im_size = the expected size of the Uchar image
+        as_tensor = boolean, if False, numpy array will be returned. If true, 
+                    torch.Tensor will be returned. 
+    @returns:
+        a 2D numpy array or 2D torch.Tensor containing image data
+    '''
     with open(fname, 'rb') as f:
         rawData = f.read()
         img = Image.frombytes('L', im_size, rawData)
@@ -16,6 +25,16 @@ def readUCharImage(fname, im_size=(512,512), as_tensor=False):
             return np.array(img)
         
 def readBinImage(fname, im_size=(512,512), as_tensor=False):
+    '''
+    Reads in a binary image file to a numpy array or a tensor.
+    @params: 
+        fname = the string filepath of the binary image
+        im_size = the expected size of the binary image
+        as_tensor = boolean, if False, numpy array will be returned. If true, 
+                    torch.Tensor will be returned. 
+    @returns:
+        a 2D numpy array or 2D torch.Tensor containing image data
+    '''
     with open(fname, 'rb') as f:
         rawData = f.read()
         img = Image.frombytes('I', im_size, rawData)
@@ -25,15 +44,31 @@ def readBinImage(fname, im_size=(512,512), as_tensor=False):
             return np.array(img).T
 
 def readFloatImage(fname, im_size=(512,512)):
+    '''
+    Reads in a float image file to a numpy array or a tensor.
+    @params: 
+        fname = the string filepath of the float image
+        im_size = the expected size of the float image
+        as_tensor = boolean, if False, numpy array will be returned. If true, 
+                    torch.Tensor will be returned. 
+    @returns:
+        a 2D numpy array or 2D torch.Tensor containing image data
+    '''
     with open(fname, 'rb') as f:
         rawData = f.read()
         img = Image.frombytes('F', im_size, rawData)
         return np.array(img)
 
 def masks2classes(masks):
-    ''' From multiple masks representing multiple classes, creates a single-mask 
+    ''' 
+    From multiple masks representing multiple classes, creates a single-mask 
     representation where "pixel" value is an integer class label. Input is an
     array of binary image masks, output is a single multi-class mask.
+    @params:
+        masks = an n-length list of mask image data
+    @returns:
+        a single 2D numpy array with pixel values 1-n reprensenting n classes
+        from n masks
     '''
     object_class = 1
     mask_size = np.shape(masks)[1:3]
@@ -49,10 +84,24 @@ def matchFilesFromPatient(patient_idx,
                           mode='ALL_DATA',
                           no_empties=False):
     '''
+    THIS FUNCTION COMPLETELY RELIES ON AN INCREDIBLY SPECIFIC FILE STRUCTURE AND
+    NAMING CONVENTIONS, SPECIFIC TO THE REVEAL PROJECT.
+
     For a given patient/day, constructs a 2d list containing lines of 
     matching image filepaths. From this list of matching filepaths, a selection 
     of data "columns" are returned based on the 'mode' parameter passed to 
     this function. Manipulates columns as ndarray but returns as list.
+    @params:
+        patient_idx = the patient number used to parse and return CT data
+        day_idx = the day index used in conjuction with patient index to parse
+                  and return CT data
+        data_folder = the location where the INCREDIBLY SPECIFIC data structure
+                      lives
+        mode = see modes below
+        no_empties = for the CT_SPINE mode, returns only CT images with non-
+                     empty mask files (edge case for testing).
+    @returns:
+        a 2D list of structure depending on the modes listed below
 
     Modes:
     'CT_ONLY': gets only the CT files.
@@ -175,31 +224,40 @@ def matchFilesFromPatient(patient_idx,
     return output.tolist()
 
 def matchFilesFromPatients(patient_idxs, day_idxs, mode = 'CT_SPINE'):
-    ''' Wraps matchFilesFromPatient() to iterate over any number of patients
-        and days. Used to fill a training or validation Dataset like 
-        CTMaskDataset or CTMulticlassDataset.'''
+    ''' 
+    Wraps matchFilesFromPatient() to iterate over any number of patients 
+    and days. Used to fill a training or validation Dataset like CTMaskDataset 
+    or CTSequenceDataset.
+    @
+    '''
     
-    data = []
-    for idx in patient_idxs:
-        for day_selection in day_idxs:
-            matched_data = matchFilesFromPatient(idx, 
-                                                 day_selection, 
-                                                 mode = mode,
+    files = []
+    volume_idxs = []
+    for patient_idx in patient_idxs:
+        for day_idx in day_idxs:
+            matched_data = matchFilesFromPatient(patient_idx, 
+                                                 day_idx, 
+                                                 mode = mode, 
                                                  no_empties = True)
             try:
-                data.extend(matched_data)
+                files.extend(matched_data)
             except:
-                pass
-    return data
+                print(f'No data found for patient {patient_idx} on day {day_idx}')
+            else: 
+                # if files is extended, record the patient/day
+                volume_idxs.append([patient_idx, day_idx])
+
+    return files, volume_idxs
 
 def plotSomeImages(figures, nrows = 1, ncols=1):
-    """Plot a dictionary of figures.
-    Parameters
-    ----------
-    figures : <title, figure> dictionary
-    ncols : number of columns of subplots wanted in the display
-    nrows : number of rows of subplots wanted in the figure
-    """
+    '''
+    Plot a dictionary of figures.
+    @params:
+        figures = <title, figure> dictionary
+        ncols = number of columns of subplots wanted in the display
+        nrows = number of rows of subplots wanted in the figure
+    https://stackoverflow.com/users/975979/gcalmettes
+    '''
     fig, axeslist = plt.subplots(ncols=ncols, nrows=nrows, figsize=(10,10))
     for ind,title in enumerate(figures):
         axeslist.ravel()[ind].imshow(figures[title], cmap='cividis')
