@@ -64,11 +64,8 @@ def predict_vol_from_seq(net,
                 
                 pbar.update()
 
-            if threshold:
-                probs_volume = probs_volume > p_threshold
-            else:
-                probs_volume = probs_volume
-    
+        probs_volume = probs_volume > p_threshold
+
     return probs_volume.numpy().astype(float)
     
 def predict_vol_from_vol(net,
@@ -121,14 +118,10 @@ def predict_vol_from_vol(net,
                 
                 pbar.update()
 
-            if threshold:
-                probs_volume = probs_volume > p_threshold
-            else:
-                probs_volume = probs_volume
-    
+        probs_volume = probs_volume > p_threshold
+
     return probs_volume.numpy().astype(float)
-
-
+    
 def get_args():
     parser = argparse.ArgumentParser(description='Predict mask volume from input volume',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
