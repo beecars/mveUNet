@@ -81,9 +81,9 @@ def train_net(net,
                      f'\tScheduler:       {scheduler.__class__.__name__}\n'
                      f'\tLearning rate:   {lr}\n'
                      f'\tCheckpoints:     {save_cp}\n'
-                     f'\tDevice:          {device.type}'
-                    f'\tTraining size:   {n_train}\n'
-                    f'\tValidation size: {n_val}')
+                     f'\tDevice:          {device.type}\n'
+                     f'\tTraining size:   {n_train}\n'
+                     f'\tValidation size: {n_val}')
     if folds > 1: # if running as "leave some out" these wont appear
         logging.info(f'\tCross-Validation Split {split}/{folds}\n')
         if split > 1: # uninspired logic to avoid info redundancy in 1st split
