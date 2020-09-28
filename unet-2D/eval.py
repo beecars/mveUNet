@@ -1,12 +1,9 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from tqdm.std import tqdm
 
 from predict import predict_vol_from_seq
 from utils.dataset import readUCharImage
-from losses import dice_coeff, iou
-
 
 def eval_volume(net,
                 device,
