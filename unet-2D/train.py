@@ -85,7 +85,7 @@ def train_net(net,
                      f'\tTraining size:   {n_train}\n'
                      f'\tValidation size: {n_val}')
     if folds > 1: # if running as "leave some out" these wont appear
-        logging.info(f'\tCross-Validation Split {split}/{folds}\n')
+        logging.info(f'\tCross-Validation Split {split}/{folds}')
         if split > 1: # uninspired logic to avoid info redundancy in 1st split
             logging.info(f'\tTraining size:   {n_train}\n'
                          f'\tValidation size: {n_val}')
