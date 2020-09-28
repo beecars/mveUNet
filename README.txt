@@ -71,6 +71,8 @@ unet-2D/
             is to prevent overfitting and to achieve validation scores that are 
             more representative of the performace of the model on new data if we 
             were to train with all current data. 
+         -- Can easily run with "leave some out" type validation by commenting
+            the cross validation lines and uncommenting the relevant lines. 
       -- Pass args with train.py to adjust hyperparameters.
       -- Tensorboard for loss, lr, weights, etc analysis and comparison.
       -- train_net() can be called for non-cross-validated training by passing 
