@@ -22,8 +22,7 @@ from torch.utils.data import DataLoader
 
 def train_net(net,
               device,
-              train_data,
-              val_data,
+              train_idxs,
               val_idxs,
               epochs = 10,
               batch_size = 1,
@@ -33,10 +32,7 @@ def train_net(net,
               current_split = 0):
 
     split = current_split + 1
-    if net.n_classes > 1:   # for multiclass training
-        train_dataset = CTMulticlassDataset(train_data)
-        val_dataset = CTMulticlassDataset(val_data)
-        
+    if net.n_classes > 1:   # for multiclass training        
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.RMSprop(net.parameters(), 
                                   lr = lr, 
@@ -45,10 +41,7 @@ def train_net(net,
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                          'min', 
                                                          patience = 5)
-    else:   # for single class training
-        train_dataset = CTMaskDataset(train_data)
-        val_dataset = CTMaskDataset(val_data)
-        
+    else:   # for single class training     
         criterion = nn.BCEWithLogitsLoss()
         # criterion = FocalLoss(alpha = 1, gamma = 2)
         # criterion = MixedLoss(alpha = 10, gamma = 2)
