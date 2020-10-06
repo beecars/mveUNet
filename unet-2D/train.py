@@ -63,7 +63,7 @@ def train_net(net,
     train_loader = DataLoader(train_dataset, 
                               batch_size=batch_size, 
                               shuffle=True, 
-                              num_workers=8, 
+                              num_workers=1, 
                               pin_memory=True)
     # val_loader... fear not, the val_loader lives inside the eval_volumes 
     #               fucntion. why?
@@ -94,7 +94,6 @@ def train_net(net,
 
     for epoch in range(epochs):
         net.train()
-
         epoch_loss = 0
         with tqdm(total = n_train,    # progress bar
                   desc = f'Epoch {epoch + 1}/{epochs}', 
@@ -169,27 +168,11 @@ def train_net(net,
     writer.close()
 
 
-def get_args():
-    # args to use if this file is called as a stand-alone script
-    parser = argparse.ArgumentParser(description='Train the UNet on images and target masks',
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-e', '--epochs', metavar='E', type=int, default=10,
-                        help='Number of epochs', dest='epochs')
-    parser.add_argument('-b', '--batch-size', metavar='B', type=int, nargs='?', default=1,
-                        help='Batch size', dest='batchsize')
-    parser.add_argument('-l', '--learning-rate', metavar='LR', type=float, nargs='?', default=0.0003,
-                        help='Learning rate', dest='lr')
-    parser.add_argument('-f', '--folder', dest='folder', type=str, default='default',
-                        help='Subfolder to output logs and model ckpts.')
-    return parser.parse_args()
-
-
 if __name__ == '__main__':
-    args = get_args()
     ############################################################################
     ### SET LOGGING DIRECTORY 
     ### Model checkpoint and interrupt also saved here.
-    subfolder = args.folder
+    subfolder = 'test'
     dt_string = datetime.now().strftime('%Y-%m-%d_%H.%M')
     dir_logging = 'unet-2D/.runs/{}/{}/'.format(subfolder, 
                                                           dt_string)
@@ -204,16 +187,17 @@ if __name__ == '__main__':
                                 logging.StreamHandler()])
     ############################################################################
     ### FOR CROSS VALIDATION
-    val_datas, val_idxs, train_datas = generateCrossvalidationSets()
-    folds = 7
+    # val_datas, val_idxs, train_datas = generateCrossvalidationSets()
+    # folds = 7
     ############################################################################
     ### FOR LEAVE ONE/SOME OUT
-    # train_patients = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-    #               18, 19, 20, 21]
-    # val_patients = [17]
-    # train_datas, _ = matchFilesFromPatients(train_patients, range(1,4))
-    # val_datas, val_idxs = matchFilesFromPatients(val_patients, range(1,4))
-    # folds = 1
+    train_patients = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                      18, 19, 20, 21]
+    val_patients = [17]
+    train_datas, _ = matchFilesFromPatients(train_patients, range(1,4))
+    val_datas, val_idxs = matchFilesFromPatients(val_patients, range(1,4))
+    train_datas, val_datas, val_idxs = [train_datas], [val_datas], [val_idxs]
+    folds = 1
     ############################################################################
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -241,9 +225,9 @@ if __name__ == '__main__':
                       train_data = train_datas[split],
                       val_data = val_datas[split],
                       val_idxs = val_idxs[split],
-                      epochs = args.epochs,
-                      batch_size = args.batchsize,
-                      lr = args.lr,
+                      epochs = 10,
+                      batch_size = 6,
+                      lr = 0.0003,
                       folds = folds,
                       current_split = split)
             
