@@ -35,13 +35,11 @@ def generateNpySlices(volume_file_zip,
         file_index_zip = iterable containing filepath and patient index, from findMatchingVolumes().
         output_folder = filepath where the .npy files will be saved to. 
         volume_idxs = the [patient, day] indexes defining which volumes to operate on.
-        masks = a list of any of ['spine_mask', 'sternum_mask', 'pelvis_mask'] determining 
+        masks = a list of any of ['spine_mask', 'stern_mask', 'pelvi_mask'] determining 
                 the data required in the .mat file for the operation to be completed.
     @returns volumes_with_required_masks = a list of index pairs of the matched volumes.
     """
-
     file_num = 0
-
     if 'ct' in mask_criteria:
         os.makedirs(output_folder + 'ct/', exist_ok=True)
     if 'spine_mask' in mask_criteria:
