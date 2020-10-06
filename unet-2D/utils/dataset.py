@@ -17,7 +17,9 @@ class CTVolumeDataset(Dataset):
     '''
     def __init__(self,
                  x,
-                 mode = 'data'):
+                 mode = 'data',
+                 axis = 'axial'):
+        self.axis == axis
         if mode == 'data':
             self.volume = x
         elif mode == 'mat':                                  
@@ -27,7 +29,12 @@ class CTVolumeDataset(Dataset):
             self.volume = np.load(x)
     
     def __getitem__(self, idx):
-        return torch.from_numpy(self.volume[:, :, idx]).unsqueeze(0).float() 
+        if self.axis == 'axial':
+            return torch.from_numpy(self.volume[:, :, idx]).unsqueeze(0).float()
+        if self.axis == 'saggital':
+            return torch.from_numpy(self.volume[:, idx, :]).unsqueeze(0).float()
+        if self.axis == 'coronal':
+            return torch.from_numpy(self.volume[idx, :, :]).unsqueeze(0).float()
 
     def __len__(self):
         return self.volume.shape[-1]    # length is last dimension of shape
