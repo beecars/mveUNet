@@ -4,7 +4,6 @@ import os
 import sys
 from datetime import datetime
 
-import numpy as np
 import torch
 import torch.nn as nn
 from torch import optim
@@ -15,8 +14,8 @@ from unet import UNet
 from losses import FocalLoss
 
 from torch.utils.tensorboard import SummaryWriter
-from utils.dataset import CTMaskDataset, CTMulticlassDataset
-from utils.utils import matchFilesFromPatients, generateCrossvalidationSets
+from utils.dataset import CTMaskDataset
+from utils.utils import generateNpySlices, generateSplits, getScanCount
 from torch.utils.data import DataLoader
 
 
@@ -26,13 +25,16 @@ def train_net(net,
               val_idxs,
               epochs = 10,
               batch_size = 1,
-              lr = 0.0001,
+              lr = 0.0003,
               save_cp = True,
               folds = 1,
               current_split = 0):
 
+    generateNpySlices(train_idxs)
+
     split = current_split + 1
-    if net.n_classes > 1:   # for multiclass training        
+    if net.n_classes > 1:   # for multiclass training     
+        train_dataset = CTMaskDataset()      
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.RMSprop(net.parameters(), 
                                   lr = lr, 
@@ -41,7 +43,8 @@ def train_net(net,
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                          'min', 
                                                          patience = 5)
-    else:   # for single class training     
+    else:   # for single class training
+        train_dataset = CTMaskDataset()     
         criterion = nn.BCEWithLogitsLoss()
         # criterion = FocalLoss(alpha = 1, gamma = 2)
         # criterion = MixedLoss(alpha = 10, gamma = 2)
@@ -59,10 +62,10 @@ def train_net(net,
                               num_workers=1, 
                               pin_memory=True)
     # val_loader... fear not, the val_loader lives inside the eval_volumes 
-    #               fucntion. why?
+    #               fucntion. why? that's a long story.
     
     n_train = len(train_dataset)
-    n_val = len(val_dataset)
+    n_val = getScanCount(val_idxs)
     writer = SummaryWriter(log_dir = dir_logging)
     
     if split == 1:
@@ -131,7 +134,6 @@ def train_net(net,
                     # validation round
                     dice, iou = eval_volumes(net, 
                                             device,
-                                            val_data,
                                             val_idxs,
                                             p_threshold = 0.5)
                     # step through learning sheduler
@@ -179,21 +181,18 @@ if __name__ == '__main__':
                     handlers=[logging.FileHandler(dir_logging + "INFO.log"),
                                 logging.StreamHandler()])
     ############################################################################
-    ### FOR CROSS VALIDATION
-    # val_datas, val_idxs, train_datas = generateCrossvalidationSets()
-    # folds = 7
-    ############################################################################
-    ### FOR LEAVE ONE/SOME OUT
-    train_patients = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-                      18, 19, 20, 21]
-    val_patients = [17]
-    train_datas, _ = matchFilesFromPatients(train_patients, range(1,4))
-    val_datas, val_idxs = matchFilesFromPatients(val_patients, range(1,4))
-    train_datas, val_datas, val_idxs = [train_datas], [val_datas], [val_idxs]
-    folds = 1
+    ### MAKE TRAINING/VALIDATION SPLIT
+    all_idxs = [[a , b] for b in range(1,4) for a in range(1,23)]
+    val_idxs, trn_idxs = generateSplits(all_idxs)
+    # for compatibility with the cross training nature...
+    val_idxs, trn_idxs = [val_idxs], [trn_idxs]
+    splits = 1
+    logging.info('FIRST FULL TRAIN WITH NEW DATA STRUCTURE')
+    logging.info('Validataion Volumes: ' + str(val_idxs))
+    logging.info('Training Volumes: ' + str(trn_idxs))
     ############################################################################
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda')
     logging.info(f'Using device {device}')
 
     net = UNet(n_channels=1, n_classes=1, bilinear=False)
@@ -208,21 +207,21 @@ if __name__ == '__main__':
     net.to(device=device)
 
     validation_scores = []
-    for split in range(len(val_datas)):
+    for split in range(splits):
         # reload initial weights
         state = torch.load(dir_logging + 'intial_state.pt')
         net.load_state_dict(state)
         try:
-            train_net(net = net,
-                      device = device,
-                      train_data = train_datas[split],
-                      val_data = val_datas[split],
-                      val_idxs = val_idxs[split],
+            train_net(net,
+                      device,
+                      trn_idxs[split],
+                      val_idxs[split],
                       epochs = 10,
-                      batch_size = 6,
+                      batch_size = 3,
                       lr = 0.0003,
-                      folds = folds,
-                      current_split = split)
+                      save_cp = True,
+                      folds = 1,
+                      current_split = 0)
             
         except KeyboardInterrupt:
             torch.save(net.state_dict(), dir_logging + 'INTERRUPTED.pt')
