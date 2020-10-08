@@ -9,19 +9,19 @@ def eval_volume(net,
                 device,
                 vol_idx,
                 p_threshold,
-                mask = 'spine_mask'):
-    """Takes a vol_idx in the form [patient_idx, day_idx] and evaluates a 
+                mask = 'spine_mask'): 
+    """ Takes a vol_idx in the form [patient_idx, day_idx] and evaluates a 
     prediction from a convnet model against the ground truth.
 
     Not yet working for multi-class evaluation. 
     
-    @params:
+    @params: 
     net: pytorch convnet model.
     device: pytorch device for computation.
     vol_idx: identifier for a patient data volume in the form [p, d].
     p_threshold: probability above which prediction is considered True.
     
-    @return:
+    @return: 
     dice, iou: returns both the dice and iou score.
     """
     mask_vol = loadMatData(vol_idx, data = mask)
@@ -48,8 +48,8 @@ def eval_volumes(net,
                 device,
                 vol_idxs,
                 p_threshold = 0.5):
-    """
-    Wraps eval_volume to perform multiple evaluations given a list of vol_idxs.
+    """ Wraps eval_volume to perform multiple evaluations given a list of 
+    vol_idxs.
     
     @params:
     net: pytorch convnet model.
