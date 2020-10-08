@@ -49,8 +49,7 @@ def generateSplits(vol_idxs,
                    vol_folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
                    mask_criteria = ['ct', 'spine_mask'],
                    val_ratio = 0.15):
-    """
-    Search through the given folder, find .mat files that contain all the mask
+    """ Search through the given folder, find .mat files that contain all the mask
     data passed by 'mask_criteria'. 
     Split up those into a training and a validation set.
     Any given patient will only appear in EITHER the validation or training set,
@@ -109,10 +108,20 @@ def generateNpySlices(vol_idxs,
                       vol_folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
                       output_folder = environ['REVEAL_DATA'] + '\\train_data\\', 
                       mask_criteria = ['ct', 'spine_mask']):
-    """
-    From a list of vol_idxs, generate 2D .npy files with which to train a
+    """ From a list of vol_idxs, generate 2D .npy files with which to train a
     convnet.
 
+    Places the .npy files in the following file hierarchy:
+       
+        data_dir
+          |--- ct
+          |     |--- 0.npy     (useful for a glob-style Dataset...
+          |     |--- 1.npy         ... like "CTMaskDataset" found in dataset.py) 
+          |     |...
+          |--- spine
+          |...  |--- 0.npy
+                |...
+        
     @params:
     vol_idxs: a list of vol_idx to be inspected.
     vol_folder: the folder containing the 'patient#_day#.mat' files.
@@ -168,8 +177,7 @@ def generateNpySlices(vol_idxs,
 
 
 def plotSomeImages(figures, nrows = 1, ncols=1):
-    '''
-    Plot a dictionary of figures.
+    ''' Plot a dictionary of figures.
     @params:
         figures = <title, figure> dictionary
         ncols = number of columns of subplots wanted in the display
