@@ -10,7 +10,7 @@ def predict_vol_from_vol(net,
                          vol_idx,
                          threshold = True,
                          p_threshold = 0.5):
-    """Takes a vol_idx in the form [patient_idx, day_idx] and predicts a
+    """ Takes a vol_idx in the form [patient_idx, day_idx] and predicts a
     full-volume segmentation on a CNN model.
     
     @params:
