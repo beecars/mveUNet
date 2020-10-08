@@ -5,11 +5,10 @@ from torch.autograd import Function
 
 
 class DiceCoeff(Function):
-    '''
-    Dice coefficient. Can be used as loss since it has a .backward() method
+    """ Dice coefficient. Can be used as loss since it has a .backward() method
     but BCE has been better for training on the CT data. Method .forward()
     useful as a validation metric.
-    '''
+    """
     def forward(self, input, target):
         self.save_for_backward(input, target)
         eps = 0.0001
@@ -35,9 +34,8 @@ class DiceCoeff(Function):
 
 
 class FocalLoss(nn.Module):
-    '''
-    Focal loss (from Chuong's code)
-    '''
+    """ Focal loss (from Chuong's code)
+    """
     def __init__(self, alpha=1, gamma=2, logits=True, reduce=True):
         super(FocalLoss, self).__init__()
         self.alpha = alpha
