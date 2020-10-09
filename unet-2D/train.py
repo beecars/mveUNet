@@ -47,11 +47,9 @@ def train_net(net,
         train_dataset = CTMaskDataset()     
         criterion = nn.BCEWithLogitsLoss()
         # criterion = FocalLoss(alpha = 1, gamma = 2)
-        # criterion = MixedLoss(alpha = 10, gamma = 2)
-        optimizer = optim.RMSprop(net.parameters(), 
-                                  lr = lr, 
-                                  weight_decay = 1e-8, 
-                                  momentum = 0.9)
+        optimizer = optim.AdamW(net.parameters(), 
+                                lr = lr, 
+                                weight_decay = 0.01)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
                                                          'max', 
                                                          patience = 5)
@@ -59,7 +57,7 @@ def train_net(net,
     train_loader = DataLoader(train_dataset, 
                               batch_size=batch_size, 
                               shuffle=True, 
-                              num_workers=1, 
+                              num_workers=8, 
                               pin_memory=True)
     # val_loader... fear not, the val_loader lives inside the eval_volumes 
     #               fucntion. why? that's a long story.
@@ -99,8 +97,8 @@ def train_net(net,
                   bar_format = '{l_bar}{bar:60}{r_bar}{bar:-10b}') as pbar:
 
             for i, batch in enumerate(train_loader):
-                imgs = batch['image']
-                true_masks = batch['target']
+                imgs = batch['ct']
+                true_masks = batch['spine']
 
                 # load image and mask to device
                 imgs = imgs.to(device=device, dtype=torch.float32)
@@ -108,10 +106,10 @@ def train_net(net,
                 true_masks = true_masks.to(device=device, dtype=mask_type)
 
                 # forward pass image through model
-                masks_pred = net(imgs)
+                pred_masks = net(imgs)
                 
                 # calcululate and log loss
-                loss = criterion(masks_pred, true_masks)
+                loss = criterion(pred_masks, true_masks)
                 epoch_loss += loss.item()
                 writer.add_scalar(f'split_{split}/train_loss', 
                                   loss.item(), 
@@ -132,18 +130,20 @@ def train_net(net,
                     or (i == round(len(train_loader)/3))
                     or (i == round(len(train_loader)*2/3))):
                     # validation round
+                    net.eval()  
                     dice, iou = eval_volumes(net, 
-                                            device,
-                                            val_idxs,
-                                            p_threshold = 0.5)
+                                             device,
+                                             val_idxs,
+                                             p_threshold = 0.5)
                     # step through learning sheduler
                     scheduler.step(iou)
-                    
+                    # set net back to train mode
+                    net.train()
+                   
                     # log learning rate
                     writer.add_scalar(f'split_{split}/learning_rate', 
                                       optimizer.param_groups[0]['lr'], 
                                       global_step)
-                    
                     # log validation metrics
                     if net.n_classes > 1:
                         writer.add_scalar(f'split_{split}/validation/cross_entropy', 
@@ -156,6 +156,7 @@ def train_net(net,
                         writer.add_scalar(f'split_{split}/validation/iou', 
                                           iou, 
                                           global_step)
+                    
     if save_cp:
         torch.save(net.state_dict(),
                    dir_logging + f'model_state_split{split}.pth')
@@ -169,8 +170,7 @@ if __name__ == '__main__':
     ### Model checkpoint and interrupt also saved here.
     subfolder = 'test'
     dt_string = datetime.now().strftime('%Y-%m-%d_%H.%M')
-    dir_logging = 'unet-2D/.runs/{}/{}/'.format(subfolder, 
-                                                          dt_string)
+    dir_logging = 'unet-2D/.runs/{}/{}/'.format(subfolder, dt_string)
     try:
         os.makedirs(dir_logging)
     except OSError:
@@ -184,10 +184,12 @@ if __name__ == '__main__':
     ### MAKE TRAINING/VALIDATION SPLIT
     all_idxs = [[a , b] for b in range(1,4) for a in range(1,23)]
     val_idxs, trn_idxs = generateSplits(all_idxs)
+    # trn_idxs = [[17, 3], [9, 3], [1, 1]]
+    # val_idxs = [[16, 3]]
     # for compatibility with the cross training nature...
     val_idxs, trn_idxs = [val_idxs], [trn_idxs]
     splits = 1
-    logging.info('FIRST FULL TRAIN WITH NEW DATA STRUCTURE')
+    logging.info('TESTING... ATTENTION PLEASE')
     logging.info('Validataion Volumes: ' + str(val_idxs))
     logging.info('Training Volumes: ' + str(trn_idxs))
     ############################################################################
@@ -217,7 +219,7 @@ if __name__ == '__main__':
                       trn_idxs[split],
                       val_idxs[split],
                       epochs = 10,
-                      batch_size = 3,
+                      batch_size = 6,
                       lr = 0.0003,
                       save_cp = True,
                       folds = 1,
