@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 from pathlib import Path
 from utils.utils import loadMatData
 from os import environ
-from imgaug import augmenters as iaa
+from utils.augment import augment_dict
 
 class VolumeDataset(Dataset):
     """ A Dataset genereated from a [vol_idx] representing a .mat file.
@@ -55,9 +55,11 @@ class CTMaskDataset(Dataset):
     """
     def __init__(self, 
                  data_dir = environ['REVEAL_DATA'] + '\\train_data\\',
-                 mask_criteria = ['spine']):
+                 mask_criteria = ['spine'],
+                 augment = True):
         ct_path = Path(data_dir + '/ct')
         self.mask_criteria = mask_criteria
+        self.augment = augment
         self.ct_files = [file.__str__() for file in list(ct_path.glob('*'))]
         if 'spine' in mask_criteria:
             spine_path = Path(data_dir + '/spine')
@@ -72,22 +74,24 @@ class CTMaskDataset(Dataset):
     def __getitem__(self, idx):
         # load up the ct data into a dict 
         ct = np.load(self.ct_files[idx])
-        ct = torch.from_numpy(ct).unsqueeze(0)
-        data_dict = {'image': ct}
+        data_dict = {'ct': ct}
         # load up the mask data matching the mask_criteria
         if 'spine' in self.mask_criteria:
             spine = np.load(self.spine_files[idx])
-            spine = torch.from_numpy(spine).unsqueeze(0)
             data_dict['spine'] = spine
         if 'sternum' in self.mask_criteria:
             stern = np.load(self.stern_files[idx])
-            stern = torch.from_numpy(stern).unsqueeze(0)
-            data_dict['stern'] = stern
+            data_dict['stern'] = stern  
         if 'pelvis' in self.mask_criteria:
             pelvi = np.load(self.pelvi_files[idx])
-            pelvi = torch.from_numpy(pelvi).unsqueeze(0)
             data_dict['pelvi'] = pelvi
-    
+        # optionally perform augmentation
+        if self.augment == True:
+            data_dict = augment_dict(data_dict)
+        # convert to npy arrays
+        for item in data_dict:
+            data_dict[item] = torch.from_numpy(data_dict[item]).unsqueeze(0).float()
+        
         return data_dict
     
     def __len__(self):
