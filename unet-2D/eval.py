@@ -8,7 +8,7 @@ from utils.utils import loadMatData
 def eval_volume(net,
                 device,
                 vol_idx,
-                p_threshold,
+                p_threshold = 0.5,
                 mask = 'spine_mask'): 
     """ Takes a vol_idx in the form [patient_idx, day_idx] and evaluates a 
     prediction from a convnet model against the ground truth.
@@ -69,5 +69,5 @@ def eval_volumes(net,
                                 p_threshold)
         dice_sum = dice_sum + dice
         iou_sum = iou_sum + iou
-
+        
     return dice_sum/len(vol_idxs), iou_sum/len(vol_idxs)
