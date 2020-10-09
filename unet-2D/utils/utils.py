@@ -143,10 +143,9 @@ def generateNpySlices(vol_idxs,
     if 'pelvis_mask' in mask_criteria:
         makedirs(output_folder + 'pelvis/', exist_ok = True)
     
-    count = getScanCount(vol_idxs)
-    with tqdm(total = count,    # progress bar
+    with tqdm(total = len(vol_file_list),    # progress bar
                     desc = f'Generating Training Scans', 
-                    unit = 'scan',
+                    unit = 'volume',
                     ascii = True,
                     leave = False,
                     bar_format = '{l_bar}{bar:60}{r_bar}{bar:-10b}') as pbar:
@@ -154,27 +153,18 @@ def generateNpySlices(vol_idxs,
         file_num = 0    # will be incremented to name files
         for file in vol_file_list:
             volume = loadmat(file)
-            # get needed data to memory
-            volume_ct = volume['ct']
-            if 'spine_mask' in mask_criteria:
-                volume_spine = volume['spine_mask']
-            if 'sternum_mask' in mask_criteria:
-                volume_stern = volume['stern_mask']
-            if 'pelvis_mask' in mask_criteria:
-                volume_pelvi = volume['pelvi_mask']
             # step through images in the volumes
-            for idx in range(0, volume_ct.shape[-1]):
+            for idx in range(0, volume['ct'].shape[-1]):
                 if 'ct' in mask_criteria:
-                    np.save(output_folder + 'ct/' f'{file_num}_ct.npy', volume_ct[:, :, idx])
+                    np.save(output_folder + 'ct/' f'{file_num}_ct.npy', volume['ct'][:, :, idx])
                 if 'spine_mask' in mask_criteria:
-                    np.save(output_folder + 'spine/' f'{file_num}_spine.npy', volume_spine[:, :, idx])
+                    np.save(output_folder + 'spine/' f'{file_num}_spine.npy', volume['spine_mask'][:, :, idx])
                 if 'sternum_mask' in mask_criteria:
-                    np.save(output_folder + 'sternum/' f'{file_num}_sternum.npy', volume_stern[:, :, idx])
+                    np.save(output_folder + 'sternum/' f'{file_num}_sternum.npy', volume['stern_mask'][:, :, idx])
                 if 'pelvis_mask' in mask_criteria:
-                    np.save(output_folder + 'pelvis/' f'{file_num}_pelvis.npy', volume_pelvi[:, :, idx])
+                    np.save(output_folder + 'pelvis/' f'{file_num}_pelvis.npy', volume['pelvi_mask'][:, :, idx])
                 file_num += 1
-                pbar.update(1)  # progress bar
-
+            pbar.update(1)  # progress bar
 
 def plotSomeImages(figures, nrows = 1, ncols=1):
     ''' Plot a dictionary of figures.
