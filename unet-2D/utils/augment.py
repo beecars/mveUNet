@@ -1,13 +1,12 @@
 import numpy as np
 import albumentations as albu
 
-
 def augment_dict(image_dict):
 
     augmentation = albu.Compose([
         albu.ShiftScaleRotate(shift_limit=0.2, rotate_limit=5, p=1),
         albu.CenterCrop(320, 320),
-        albu.Flip(p=0.5).apply(1)
+        albu.HorizontalFlip(p=0.5)
         ])
 
     image = np.expand_dims(image_dict['ct'], axis=2)
