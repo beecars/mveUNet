@@ -45,8 +45,8 @@ def train_net(net,
                                                          patience = 5)
     else:   # for single class training
         train_dataset = CTMaskDataset()     
-        criterion = nn.BCEWithLogitsLoss()
-        # criterion = FocalLoss(alpha = 1, gamma = 2)
+        # criterion = nn.BCEWithLogitsLoss()
+        criterion = FocalLoss(alpha = 1, gamma = 2)
         optimizer = optim.AdamW(net.parameters(), 
                                 lr = lr, 
                                 weight_decay = 0.01)
@@ -165,10 +165,12 @@ def train_net(net,
 
 
 if __name__ == '__main__':
+    
     ############################################################################
     ### SET LOGGING DIRECTORY 
     ### Model checkpoint and interrupt also saved here.
-    subfolder = 'test'
+    subfolder = 'full_vol_spine'
+    
     dt_string = datetime.now().strftime('%Y-%m-%d_%H.%M')
     dir_logging = 'unet-2D/.runs/{}/{}/'.format(subfolder, dt_string)
     try:
@@ -181,6 +183,8 @@ if __name__ == '__main__':
                     handlers=[logging.FileHandler(dir_logging + "INFO.log"),
                                 logging.StreamHandler()])
     ############################################################################
+
+    ############################################################################
     ### MAKE TRAINING/VALIDATION SPLIT
     all_idxs = [[a , b] for b in range(1,4) for a in range(1,23)]
     val_idxs, trn_idxs = generateSplits(all_idxs)
@@ -189,10 +193,11 @@ if __name__ == '__main__':
     # for compatibility with the cross training nature...
     val_idxs, trn_idxs = [val_idxs], [trn_idxs]
     splits = 1
-    logging.info('TESTING... ATTENTION PLEASE')
+    logging.info('FOCAL LOSS ON FULL VOLUME CT SEGMENTATION')
     logging.info('Validataion Volumes: ' + str(val_idxs))
     logging.info('Training Volumes: ' + str(trn_idxs))
     ############################################################################
+
 
     device = torch.device('cuda')
     logging.info(f'Using device {device}')
@@ -218,7 +223,7 @@ if __name__ == '__main__':
                       device,
                       trn_idxs[split],
                       val_idxs[split],
-                      epochs = 10,
+                      epochs = 20,
                       batch_size = 6,
                       lr = 0.0003,
                       save_cp = True,
@@ -234,4 +239,5 @@ if __name__ == '__main__':
                 os._exit(0)
     # remove inital state
     os.remove(dir_logging + 'intial_state.pt')
+
         
