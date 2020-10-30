@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 from pathlib import Path
 from utils.utils import loadMatData
 from os import environ
-from utils.augment import augment_dict
+from utils.augment import augment_axial
 
 class VolumeDataset(Dataset):
     """ A Dataset genereated from a [vol_idx] representing a .mat file.
@@ -60,7 +60,9 @@ class CTMaskDataset(Dataset):
         ct_path = Path(data_dir + '/ct')
         self.mask_criteria = mask_criteria
         self.augment = augment
+        # look for the required ct .npy image files
         self.ct_files = [file.__str__() for file in list(ct_path.glob('*'))]
+        # look for the required masks
         if 'spine' in mask_criteria:
             spine_path = Path(data_dir + '/spine')
             self.spine_files = [file.__str__() for file in list(spine_path.glob('*'))]
@@ -87,11 +89,12 @@ class CTMaskDataset(Dataset):
             data_dict['pelvi'] = pelvi
         # optionally perform augmentation
         if self.augment == True:
-            data_dict = augment_dict(data_dict)
+            data_dict = augment_axial(data_dict)
+
         # convert to npy arrays
         for item in data_dict:
             data_dict[item] = torch.from_numpy(data_dict[item]).unsqueeze(0).float()
-        
+        # return shape is tensor(1, H, W)
         return data_dict
     
     def __len__(self):
