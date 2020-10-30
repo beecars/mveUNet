@@ -3,7 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import whosmat, loadmat
 from random import shuffle, choice
+from sklearn.model_selection import GroupKFold
 from tqdm import tqdm
+
 
 def loadMatData(vol_idx,
                 folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
@@ -23,6 +25,7 @@ def loadMatData(vol_idx,
     mat = loadmat(folder + f'patient{vol_idx[0]}_day{vol_idx[1]}.mat',
                   variable_names = data)[data]
     return mat
+
 
 def getScanCount(vol_idxs,
                  folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\'):
@@ -45,15 +48,15 @@ def getScanCount(vol_idxs,
         total_scans = total_scans + scans
     return total_scans
 
+
 def generateSplits(vol_idxs,
                    vol_folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
                    mask_criteria = ['ct', 'spine_mask'],
                    val_ratio = 0.15):
-    """ Search through the given folder, find .mat files that contain all the mask
-    data passed by 'mask_criteria'. 
-    Split up those into a training and a validation set.
-    Any given patient will only appear in EITHER the validation or training set,
-    but not both. This is by design.
+    """ Search through the given folder, find .mat files that contain all the 
+    mask data passed by 'mask_criteria'. Split up those into a training and a 
+    validation set. Any given patient will only appear in EITHER the validation 
+    or training set, but not both. This is by design.
 
     Files must have particular naming convention: 'patient1_day1.mat'
     
@@ -101,13 +104,65 @@ def generateSplits(vol_idxs,
             compatible_vol_idxs = list(filter(lambda idx: idx[0] != chosen_patient, compatible_vol_idxs))
     # the training volumes are what's left
     trn_idxs = compatible_vol_idxs
-    return val_idxs, trn_idxs
+    return [val_idxs], [trn_idxs]
+
+
+def generateCrossValidationSplits(vol_idxs,
+                   vol_folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
+                   mask_criteria = ['ct', 'spine_mask'],
+                   n_folds = 7):
+    """ Search through the given folder, find .mat files that contain all the 
+    mask data passed by 'mask_criteria'. Split up those into K number of 
+    training and validation sets. For any given split, any given patient will 
+    only appear in EITHER the validation or training set, but not both. This 
+    also means neccessarily that each patient will appear in one and only one
+    validation set. This is by design.
+
+    Files must have particular naming convention: 'patient1_day1.mat'
+    
+    @params:
+    vol_idxs: a list of vol_idx to be inspected
+    vol_folder: the folder containing the 'patient#_day#.mat' files.
+    mask_criteria: list of strings identifying the masks that must be present
+                   in the .mat files for the volume to be considered in the 
+                   training/validation splits.
+    n_folds: the number of folds/splits for the k-fold training scheme. 
+
+    @returns: 
+    val_idxs, trn_idxs: 'n_folds' lists of validation and training vol_idxs,
+                        to be used for cross-validation training. 
+    """
+    # initialize array
+    compatible_vol_idxs = []
+    # look for data that have the required masks
+    for vol_idx in vol_idxs:
+        vol_file = (vol_folder + f'patient{vol_idx[0]}_day{vol_idx[1]}.mat')
+        vol = whosmat(vol_file)
+        # this crazy list comp. checks if the vol doesn't contain the masks
+        if not all([criteria in [item[0] for item in vol] for criteria in mask_criteria]):
+            continue
+        # otherwise add it to the list
+        compatible_vol_idxs.append(vol_idx)
+    vol_idxs = compatible_vol_idxs
+    # create groups array from the patient identifiers
+    groups = [vol_idx[0] for vol_idx in vol_idxs]
+    # create the group k fold object
+    GKF = GroupKFold(n_splits=n_folds)
+    # run the split method to generate the splits
+    val_idx_splits = []
+    trn_idx_splits = []
+    for trn_idxs, val_idxs in GKF.split(vol_idxs, groups = groups):
+        trn_idx_splits.append([vol_idxs[i] for i in trn_idxs])
+        val_idx_splits.append([vol_idxs[i] for i in val_idxs])
+
+    return val_idx_splits, trn_idx_splits
 
 
 def generateNpySlices(vol_idxs,
                       vol_folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
                       output_folder = environ['REVEAL_DATA'] + '\\train_data\\', 
-                      mask_criteria = ['ct', 'spine_mask']):
+                      mask_criteria = ['ct', 'spine_mask'],
+                      plane = 'axial'):
     """ From a list of vol_idxs, generate 2D .npy files with which to train a
     convnet.
 
@@ -126,7 +181,10 @@ def generateNpySlices(vol_idxs,
     vol_idxs: a list of vol_idx to be inspected.
     vol_folder: the folder containing the 'patient#_day#.mat' files.
     output_folder: folder where the .npy files will be written to.
-    mask_criteria:
+    mask_criteria: list of strings identifying the masks that must be present
+                   in the .mat files for the volume to be considered in the 
+                   training/validation splits.
+    plane: the intended image plane, one of 'axial', 'saggital', 'coronal'.
     """
     # generate file list
     vol_file_list = []
@@ -153,20 +211,60 @@ def generateNpySlices(vol_idxs,
         file_num = 0    # will be incremented to name files
         for file in vol_file_list:
             volume = loadmat(file)
-            # step through images in the volumes
-            for idx in range(0, volume['ct'].shape[-1]):
-                if 'ct' in mask_criteria:
-                    np.save(output_folder + 'ct/' f'{file_num}_ct.npy', volume['ct'][:, :, idx])
-                if 'spine_mask' in mask_criteria:
-                    np.save(output_folder + 'spine/' f'{file_num}_spine.npy', volume['spine_mask'][:, :, idx])
-                if 'sternum_mask' in mask_criteria:
-                    np.save(output_folder + 'sternum/' f'{file_num}_sternum.npy', volume['stern_mask'][:, :, idx])
-                if 'pelvis_mask' in mask_criteria:
-                    np.save(output_folder + 'pelvis/' f'{file_num}_pelvis.npy', volume['pelvi_mask'][:, :, idx])
-                file_num += 1
-            pbar.update(1)  # progress bar
+            if plane == 'axial':
+                 # sample the volume on the "default" axial axis and save
+                for idx in range(0, volume['ct'].shape[2]):
+                    if 'ct' in mask_criteria:
+                        np.save(output_folder + 'ct/' f'{file_num}_ct.npy', 
+                                volume['ct'][:, :, idx])
+                    if 'spine_mask' in mask_criteria:
+                        np.save(output_folder + 'spine/' f'{file_num}_spine.npy', 
+                                volume['spine_mask'][:, :, idx])
+                    if 'sternum_mask' in mask_criteria:
+                        np.save(output_folder + 'sternum/' f'{file_num}_sternum.npy', 
+                                volume['stern_mask'][:, :, idx])
+                    if 'pelvis_mask' in mask_criteria:
+                        np.save(output_folder + 'pelvis/' f'{file_num}_pelvis.npy', 
+                                volume['pelvi_mask'][:, :, idx])
+                    file_num += 1
+                pbar.update(1)  # progress bar
+            if plane == 'saggital':
+                for idx in range(0, volume['ct'].shape[1]):
+                    if (idx % 10 == 0) or (np.count_nonzero(volume['spine_mask'][:, idx, :]) > 0):
+                        if 'spine_mask' in mask_criteria:
+                            np.save(output_folder + 'spine/' f'{file_num}_spine.npy', 
+                                    volume['spine_mask'][:, idx, :])
+                        if 'ct' in mask_criteria:
+                            np.save(output_folder + 'ct/' f'{file_num}_ct.npy', 
+                                    volume['ct'][:, idx, :])
+                        if 'sternum_mask' in mask_criteria:
+                            np.save(output_folder + 'sternum/' f'{file_num}_sternum.npy', 
+                                    volume['stern_mask'][:, idx, :])
+                        if 'pelvis_mask' in mask_criteria:
+                            np.save(output_folder + 'pelvis/' f'{file_num}_pelvis.npy', 
+                                    volume['pelvi_mask'][:, idx, :])
+                        file_num += 1
+                pbar.update(1)  # progress bar
+            if plane == 'coronal':
+                for idx in range(0, volume['ct'].shape[0]):
+                    if (idx % 10 == 0 or np.count_nonzero(volume['spine_mask'][:, idx, :]) > 0):
+                        if 'ct' in mask_criteria:
+                            np.save(output_folder + 'ct/' f'{file_num}_ct.npy', 
+                                    volume['ct'][idx, :, :])
+                        if 'spine_mask' in mask_criteria:
+                            np.save(output_folder + 'spine/' f'{file_num}_spine.npy', 
+                                    volume['spine_mask'][idx, :, :])
+                        if 'sternum_mask' in mask_criteria:
+                            np.save(output_folder + 'sternum/' f'{file_num}_sternum.npy', 
+                                    volume['stern_mask'][idx, :, :])
+                        if 'pelvis_mask' in mask_criteria:
+                            np.save(output_folder + 'pelvis/' f'{file_num}_pelvis.npy', 
+                                    volume['pelvi_mask'][idx, :, :])
+                        file_num += 1
+                pbar.update(1)  # progress bar
 
-def plotSomeImages(figures, nrows = 1, ncols=1):
+
+def plotSomeImages(figures, nrows = 1, ncols=1, interp='none'):
     ''' Plot a dictionary of figures.
     @params:
         figures = <title, figure> dictionary
@@ -176,10 +274,8 @@ def plotSomeImages(figures, nrows = 1, ncols=1):
     '''
     fig, axeslist = plt.subplots(ncols=ncols, nrows=nrows, figsize=(10,10))
     for ind,title in enumerate(figures):
-        axeslist.ravel()[ind].imshow(figures[title], cmap='cividis')
+        axeslist.ravel()[ind].imshow(figures[title], cmap='cividis', interpolation=interp)
         axeslist.ravel()[ind].set_title(title, fontsize=15)
         axeslist.ravel()[ind].set_axis_off()
     plt.tight_layout() # optional
 
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
