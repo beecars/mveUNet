@@ -1,7 +1,9 @@
 import numpy as np
+from numpy.core.fromnumeric import shape
 import torch
 import torch.nn.functional as F
 from tqdm.std import tqdm
+from scipy.ndimage import rotate as imrot
 
 from utils.utils import loadMatData
 
@@ -14,20 +16,19 @@ def predict_vol_from_vol(net,
     full-volume segmentation on a CNN model.
     
     @params:
-    net : pytorch convnet model
-    device : pytorch device for computation
-    vol_idx : identifier for a patient data volume in the form [p, d]
-    threshold : boolean for whether or not to threshold the output
-    p_threshold : probability above which prediction is considered True
+    net : pytorch convnet model.
+    device : pytorch device for computation.
+    vol_idx : identifier for a patient data volume in the form [p, d].
+    threshold : boolean for whether or not to threshold the output.
+    p_threshold : probability above which prediction is considered True.
     
     @return:
     pred_volume : a prediction volume
     """
     volume = loadMatData(vol_idx, data = 'ct')
-
+    vol_shape = volume.shape
     n_cts = volume.shape[-1]
-    img_shape = volume.shape[0:2]
-    pred_volume = torch.empty(img_shape[0], img_shape[1], n_cts)
+    pred_volume = torch.empty(vol_shape[0], vol_shape[1], vol_shape[2])
 
     with tqdm(total = n_cts,   # progress bar
               desc = f'Predicting Volume', 
@@ -38,10 +39,10 @@ def predict_vol_from_vol(net,
     
         with torch.no_grad():
             for idx in range(n_cts):
-                cts = torch.Tensor(volume[:, :, idx]).unsqueeze(0).unsqueeze(0)
-                cts = cts.to(device=device, dtype=torch.float32)
+                ct = torch.Tensor(volume[:, :, idx]).unsqueeze(0).unsqueeze(0)
+                ct = ct.to(device=device, dtype=torch.float32)
 
-                pred = net(cts)
+                pred = net(ct)
                 pred = torch.squeeze(pred)
 
                 if net.n_classes > 1:
@@ -49,7 +50,8 @@ def predict_vol_from_vol(net,
                 else:
                     pred = torch.sigmoid(pred)
 
-                pred_volume[:,:,idx] = pred
+                pred_volume[:, :, idx] = pred
+                
                 pbar.update()
         
         if threshold == True:
