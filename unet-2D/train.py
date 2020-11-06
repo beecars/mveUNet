@@ -18,8 +18,6 @@ from losses import FocalLoss
 from utils.dataset import CTMaskDataset
 from utils.utils import generateNpySlices, generateSplits, getScanCount
 
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-
 def train_net(net,
               device,
               train_idxs,
