@@ -29,7 +29,7 @@ def train_net(net,
               save_cp = True):
 
     if net.n_classes > 1:   # for multiclass training
-        train_dataset = CTMaskDataset(mask_criteria=mask_names)      
+        train_dataset = CTMaskDataset()      
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.AdamW(net.parameters(), 
                                 lr = lr, 
@@ -152,15 +152,15 @@ if __name__ == '__main__':
     ############################################################################
     ### GENERAL TRAINING SCHEME SET UP
     ### log folder / description / train & validation volumes / masks
-    # run subfolder name and description
+    # subfolder name and description for run logs
     subfolder = 'multiclass_testing'
     run_description = 'test run for 3-class UNet on REVEAL patient data.'
-    # training/validation splits by patient index
+    # training/validation splits by patient vol_idx (see README)
     val_idxs = [[2, 1], [2, 3]]
     trn_idxs = [[1, 2], [3, 3], [5, 3], [5, 2], [4, 2], [5, 1], [3, 2], [4, 1],
                  [6, 1], [6, 3], [1, 3], [3, 1], [1, 1], [4, 3]]
-    # mask names defining the class masks
-    mask_names = ['spine_mask']
+    # mask names defining the class masks (see README)
+    mask_names = ['stern_mask']
     n_classes = len(mask_names)+1 if len(mask_names) > 1 else 1
     ############################################################################
     dt_string = datetime.now().strftime('%Y-%m-%d_%H.%M')
