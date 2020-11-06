@@ -52,19 +52,21 @@ def eval_volume(net,
                 vol_idx,
                 mask_names,
                 p_threshold = 0.5): 
-    """ Takes a vol_idx in the form [patient_idx, day_idx] and evaluates a 
-    prediction from a convnet model against the ground truth.
-
-    Not yet working for multi-class evaluation. 
+    """ Takes a vol_idx in the form [patient_idx, day_idx]. Loads ct data from 
+    the MATLAB volume data file represented by vol_idx. Makes prediction volume
+    from net. Evaluates the predicion against the ground truth masks defined by
+    mask_names.
     
     @params: 
     net: pytorch convnet model.
     device: pytorch device for computation.
     vol_idx: identifier for a patient data volume in the form [p, d].
+    mask_names: a list of the mask names.
     p_threshold: probability above which prediction is considered True.
     
     @return: 
-    dice, iou: returns both the dice and iou score.
+    dices, ious: returns both the dice and iou scores, in a {dict} with keys 
+                 determined by the mask_names that represent the classes. 
     """
     # create prediction volume
     pred_volume = predict_vol_from_vol(net,
@@ -77,11 +79,10 @@ def eval_volume(net,
     dices = {mask_name : 0 for mask_name in mask_names}
     # iterate through the classes and evaluate
     for i, mask_name in enumerate(mask_names):
-        if net.n_classes > 1:
-            # pred_vol[i+1] is the prediction of the true masks[i] for multiclass
-            class_idx = i + 1
+        if net.n_classes > 1:   # pred_vol[i+1] is the prediction 
+            class_idx = i + 1   # of the true masks[i] for multiclass
         else:
-            class_idx = 0
+            class_idx = 0       # the single class case
         true_mask = loadMatData(vol_idx, data = mask_name)
         # calculate intersection over union between volumes from all classes
         iou = jaccard(pred_volume[class_idx], true_mask)
@@ -103,11 +104,12 @@ def eval_volumes(net,
     @params:
     net: pytorch convnet model.
     device: pytorch device for computation.
-    vol_idx: identifier for a patient data volume in the form [p, d].
+    vol_idx: identifier for a patient data volume in the form [patient, day].
+    mask_names: a list of mask_names. 
     p_threshold: probability above which prediction is considered True.
     
     @return:
-    dice, iou: returns the average of the dice and iou for all vol_idxs.
+    dice_avgs, iou_avgs: returns the average of the dice and iou for all vol_idxs.
     """
     # intialize dicts to hold scores for averaging
     dice_sums = {mask_name : 0 for mask_name in mask_names}
