@@ -88,22 +88,27 @@ def generateSplits(vol_idxs,
     val_size = round(val_ratio * len(compatible_vol_idxs))
     val_idxs = []
     bucket = 0  
+    
     while bucket < val_size:
         # fill this bucket to val_size
         temp_idxs = []
         diff = val_size - bucket    # vols left to fill
         chosen_idx = choice(compatible_vol_idxs)    # rand choice vol idx
         chosen_patient = chosen_idx[0]              # patient id of choice
+        
         for idx in compatible_vol_idxs:     # look for other vols with idx
             if idx[0] == chosen_patient:    
                 temp_idxs.append(idx)       # add them to the temp array
+        
         if len(temp_idxs) <= diff:          # if they can fit in the bucket
             val_idxs.extend(temp_idxs)      # add temp array to val_idxs
             bucket += len(temp_idxs)        # update the bucket size
             # this filter removes the selected idxs from the larger set
             compatible_vol_idxs = list(filter(lambda idx: idx[0] != chosen_patient, compatible_vol_idxs))
+    
     # the training volumes are what's left
     trn_idxs = compatible_vol_idxs
+    
     return [val_idxs], [trn_idxs]
 
 
@@ -134,6 +139,7 @@ def generateCrossValidationSplits(vol_idxs,
     """
     # initialize array
     compatible_vol_idxs = []
+    
     # look for data that have the required masks
     for vol_idx in vol_idxs:
         vol_file = (vol_folder + f'patient{vol_idx[0]}_day{vol_idx[1]}.mat')
@@ -143,7 +149,9 @@ def generateCrossValidationSplits(vol_idxs,
             continue
         # otherwise add it to the list
         compatible_vol_idxs.append(vol_idx)
+
     vol_idxs = compatible_vol_idxs
+    
     # create groups array from the patient identifiers
     groups = [vol_idx[0] for vol_idx in vol_idxs]
     # create the group k fold object
@@ -161,11 +169,13 @@ def generateCrossValidationSplits(vol_idxs,
 def generateNpySlices(vol_idxs,
                       vol_folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
                       output_folder = environ['REVEAL_DATA'] + '\\train_data\\', 
-                      mask_criteria = ['ct', 'spine_mask'],
+                      mask_names = ['spine_mask', 'stern_mask', 'pelvi_mask'],
                       plane = 'axial',
                       no_empties = False):
     """ From a list of vol_idxs, generate 2D .npy files with which to train a
-    convnet.
+    convnet. Creates multiclass mask targets when more than one class is passed
+    with mask_names. Masks are assigned class numbers in the order they appear 
+    in the mask_names list, starting with 1. Zero is the background class.
 
     Places the .npy files in the following file hierarchy:
        
@@ -174,7 +184,7 @@ def generateNpySlices(vol_idxs,
           |     |--- 0.npy     (useful for a glob-style Dataset...
           |     |--- 1.npy         ... like "CTMaskDataset" found in dataset.py) 
           |     |...
-          |--- spine
+          |--- target
           |...  |--- 0.npy
                 |...
         
@@ -182,7 +192,7 @@ def generateNpySlices(vol_idxs,
     vol_idxs: a list of vol_idx to be inspected.
     vol_folder: the folder containing the 'patient#_day#.mat' files.
     output_folder: folder where the .npy files will be written to.
-    mask_criteria: list of strings identifying the masks that must be present
+    mask_names: list of strings identifying the masks that must be present
                    in the .mat files for the volume to be considered in the 
                    training/validation splits.
     plane: the intended image plane, one of 'axial', 'saggital', 'coronal'.
@@ -192,15 +202,9 @@ def generateNpySlices(vol_idxs,
     for vol_idx in vol_idxs:
         vol_file_list.append(vol_folder + f'patient{vol_idx[0]}_day{vol_idx[1]}.mat')
     
-    # make output directories as required
-    if 'ct' in mask_criteria:
-        makedirs(output_folder + 'ct/', exist_ok = True)
-    if 'spine_mask' in mask_criteria:
-        makedirs(output_folder + 'spine/', exist_ok = True)
-    if 'stern_mask' in mask_criteria:
-        makedirs(output_folder + 'sternum/', exist_ok = True)
-    if 'pelvi_mask' in mask_criteria:
-        makedirs(output_folder + 'pelvis/', exist_ok = True)
+    # make output directories
+    makedirs(output_folder + f'ct/', exist_ok = True)
+    makedirs(output_folder + f'target/', exist_ok = True)
     
     with tqdm(total = len(vol_file_list),    # progress bar
                     desc = f'Generating Training Scans', 
@@ -209,59 +213,66 @@ def generateNpySlices(vol_idxs,
                     leave = False,
                     bar_format = '{l_bar}{bar:60}{r_bar}{bar:-10b}') as pbar:
 
-        file_num = 0    # will be incremented to name files
+        file_num = 0 # will be incremented to name files
+        
         for file in vol_file_list:
+            
             volume = loadmat(file)
+            
             if plane == 'axial':
-                 # sample the volume on the "default" axial axis and save
                 for idx in range(0, volume['ct'].shape[2]):
-                    if 'spine_mask' in mask_criteria:
-                        np.save(output_folder + 'spine/' f'{file_num}_spine.npy', 
-                                volume['spine_mask'][:, :, idx])
-                    if 'stern_mask' in mask_criteria:
-                        if no_empties == True and np.count_nonzero(volume['stern_mask'][:, :, idx]) == 0:
-                            continue
-                        else:
-                            np.save(output_folder + 'sternum/' f'{file_num}_sternum.npy', 
-                                    volume['stern_mask'][:, :, idx])
-                    if 'pelvi_mask' in mask_criteria:
-                        np.save(output_folder + 'pelvis/' f'{file_num}_pelvis.npy', 
-                                volume['pelvi_mask'][:, :, idx])
-                    if 'ct' in mask_criteria:
-                        np.save(output_folder + 'ct/' f'{file_num}_ct.npy', 
-                                volume['ct'][:, :, idx])
+                    class_count = 1
+                    target = np.zeros(volume['ct'].shape[0:2])
+                    
+                    # save CT file
+                    np.save(output_folder + 'ct/' f'{file_num}_ct.npy', volume['ct'][:, :, idx])
+                    
+                    # generate target file
+                    for mask in mask_names:
+                        slice = volume[mask][:, :, idx]
+                        target[slice != 0] = class_count
+                        class_count += 1
+                    
+                    # save target file
+                    np.save(output_folder + 'target/' f'{file_num}_ct.npy', target)
                     file_num += 1
                 pbar.update(1)  # progress bar
+            
             if plane == 'saggital':
                 for idx in range(0, volume['ct'].shape[1]):
-                    if 'spine_mask' in mask_criteria:
-                        np.save(output_folder + 'spine/' f'{file_num}_spine.npy', 
-                                volume['spine_mask'][:, idx, :])
-                    if 'ct' in mask_criteria:
-                        np.save(output_folder + 'ct/' f'{file_num}_ct.npy', 
-                                volume['ct'][:, idx, :])
-                    if 'stern_mask' in mask_criteria:
-                        np.save(output_folder + 'sternum/' f'{file_num}_sternum.npy', 
-                                volume['stern_mask'][:, idx, :])
-                    if 'pelvi_mask' in mask_criteria:
-                        np.save(output_folder + 'pelvis/' f'{file_num}_pelvis.npy', 
-                                volume['pelvi_mask'][:, idx, :])
+                    class_count = 1
+                    target = np.zeros(volume['ct'].shape[0:2])
+                    
+                    # save CT file
+                    np.save(output_folder + 'ct/' f'{file_num}_ct.npy', volume['ct'][:, idx, :])
+                    
+                    # generate target file
+                    for mask in mask_names:
+                        slice = volume[mask][:, idx, :]
+                        target[slice != 0] = class_count
+                        class_count += 1
+                    
+                    # save target file
+                    np.save(output_folder + 'target/' f'{file_num}_ct.npy', target)
                     file_num += 1
                 pbar.update(1)  # progress bar
+            
             if plane == 'coronal':
                 for idx in range(0, volume['ct'].shape[0]):
-                    if 'ct' in mask_criteria:
-                        np.save(output_folder + 'ct/' f'{file_num}_ct.npy', 
-                                volume['ct'][idx, :, :])
-                    if 'spine_mask' in mask_criteria:
-                        np.save(output_folder + 'spine/' f'{file_num}_spine.npy', 
-                                volume['spine_mask'][idx, :, :])
-                    if 'stern_mask' in mask_criteria:
-                        np.save(output_folder + 'sternum/' f'{file_num}_sternum.npy', 
-                                volume['stern_mask'][idx, :, :])
-                    if 'pelvi_mask' in mask_criteria:
-                        np.save(output_folder + 'pelvis/' f'{file_num}_pelvis.npy', 
-                                volume['pelvi_mask'][idx, :, :])
+                    class_count = 1
+                    target = np.zeros(volume['ct'].shape[0:2])
+                    
+                    # save CT file
+                    np.save(output_folder + 'ct/' f'{file_num}_ct.npy', volume['ct'][idx, :, :])
+                    
+                    # generate target file
+                    for mask in mask_names:
+                        slice = volume[mask][idx, :, :]
+                        target[slice != 0] = class_count
+                        class_count += 1
+                    
+                    # save target file
+                    np.save(output_folder + 'target/' f'{file_num}_ct.npy', target)
                     file_num += 1
                 pbar.update(1)  # progress bar
 
