@@ -50,8 +50,8 @@ def get_metrics(prediction_vol, truth_vol):
 def eval_volume(net,
                 device,
                 vol_idx,
-                p_threshold = 0.5,
-                mask = 'spine_mask'): 
+                mask_names,
+                p_threshold = 0.5): 
     """ Takes a vol_idx in the form [patient_idx, day_idx] and evaluates a 
     prediction from a convnet model against the ground truth.
 
@@ -66,25 +66,36 @@ def eval_volume(net,
     @return: 
     dice, iou: returns both the dice and iou score.
     """
-    mask_vol = loadMatData(vol_idx, data = mask)
-    
     # create prediction volume
     pred_volume = predict_vol_from_vol(net,
                                        device,
                                        vol_idx,
                                        p_threshold = p_threshold)
     
-    # calculate intersection over union between volumes
-    iou = jaccard(pred_volume, mask_vol)
+    # create dicts to store performance metrics across classes
+    ious = {mask_name : 0 for mask_name in mask_names}
+    dices = {mask_name : 0 for mask_name in mask_names}
+    # iterate through the classes and evaluate
+    for i, mask_name in enumerate(mask_names):
+        if net.n_classes > 1:
+            # pred_vol[i+1] is the prediction of the true masks[i] for multiclass
+            class_idx = i + 1
+        else:
+            class_idx = 0
+        true_mask = loadMatData(vol_idx, data = mask_name)
+        # calculate intersection over union between volumes from all classes
+        iou = jaccard(pred_volume[class_idx], true_mask)
+        ious[mask_name] = iou
+        # calculate dice coefficient between volumes
+        dice = dice_coeff(pred_volume[class_idx], true_mask)
+        dices[mask_name] = dice
 
-    # calculate dice coefficient between volumes
-    dice = dice_coeff(pred_volume, mask_vol)
-
-    return dice, iou
+    return ious, dices
 
 def eval_volumes(net,
                 device,
                 vol_idxs,
+                mask_names = ['spine_mask', 'stern_mask', 'pelvi_mask'],
                 p_threshold = 0.5):
     """ Wraps eval_volume to perform multiple evaluations given a list of 
     vol_idxs.
@@ -98,14 +109,24 @@ def eval_volumes(net,
     @return:
     dice, iou: returns the average of the dice and iou for all vol_idxs.
     """
-    dice_sum = 0
-    iou_sum = 0
+    # intialize dicts to hold scores for averaging
+    dice_sum = {mask_name : 0 for mask_name in mask_names}
+    dice_avgs = {mask_name : 0 for mask_name in mask_names}
+    iou_sum = {mask_name : 0 for mask_name in mask_names}
+    iou_avgs = {mask_name : 0 for mask_name in mask_names}
     for vol_idx in vol_idxs:
-        dice, iou = eval_volume(net,
+        dices, ious = eval_volume(net,
                                 device,
                                 vol_idx,
-                                p_threshold)
-        dice_sum = dice_sum + dice
-        iou_sum = iou_sum + iou
-        
-    return dice_sum/len(vol_idxs), iou_sum/len(vol_idxs)
+                                mask_names,
+                                p_threshold = p_threshold)
+        # add the score of each evaluated volume to the sum
+        for mask_name in mask_names:
+            dice_sum[mask_name] = dice_sum[mask_name] + dices[mask_name]
+            iou_sum[mask_name] = iou_sum[mask_name] + ious[mask_name]
+        # compute the average scores
+        for mask_name in mask_names:
+            dice_avgs[mask_name] = dice_sum[mask_name]/len(vol_idxs)
+            iou_avgs[mask_name] = iou_sum[mask_name]/len(vol_idxs)
+
+    return dice_avgs, iou_avgs

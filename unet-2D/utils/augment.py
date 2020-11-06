@@ -19,7 +19,7 @@ def augment_axial(image_dict):
         ])
     # (H x W) --> (H x W x 1) for albumentations package
     image = np.expand_dims(image_dict['ct'], axis=2)
-    mask =  np.expand_dims(image_dict['spine'], axis=2)
+    mask =  np.expand_dims(image_dict['target'], axis=2)
     # do the augmentation
     aug_imgs = augmentation(image = image, mask = mask)
     # (H x W x 1) --> (H x W) for return data
@@ -27,6 +27,6 @@ def augment_axial(image_dict):
         aug_imgs[item] = np.squeeze(aug_imgs[item])
     # rename keys back to original for return data
     aug_imgs['ct'] = aug_imgs.pop('image')
-    aug_imgs['spine'] = aug_imgs.pop('mask')
+    aug_imgs['target'] = aug_imgs.pop('mask')
 
     return aug_imgs     # dict(H x W)

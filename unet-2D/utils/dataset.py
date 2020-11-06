@@ -1,7 +1,4 @@
-import random
-
 import numpy as np
-from scipy.io import loadmat
 
 import torch
 from torch.utils.data import Dataset
@@ -10,28 +7,24 @@ from utils.utils import loadMatData
 from os import environ
 from utils.augment import augment_axial
 
-class VolumeDataset(Dataset):
-    """ A Dataset genereated from a [vol_idx] representing a .mat file.
-    Files must have particular naming convention: 'patient1_day1.mat'
-
+def masks2classes(masks):
+    ''' 
+    From multiple masks representing multiple classes, creates a single-mask 
+    representation where "pixel" value is an integer class label. Input is an
+    array of binary image masks, output is a single multi-class mask.
     @params:
-        vol_idx: the [p, d] index to be loaded into the Dataset.
-        folder: the folder containing the 'patient#_day#.mat' files.
-        var: the variable to load from the .mat file (saves time?).
-    """
-    def __init__(self,
-                 vol_idx,
-                 folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
-                 var = 'ct'):
-        self.ct_vol = loadMatData(vol_idx, folder, var)
-       
-    def __getitem__(self, idx):
-        ct = torch.from_numpy(self.ct_vol[:, :, idx]).unsqueeze(0).float()
-        return {'ct': ct}
-
-    def __len__(self):
-        return self.ct_vol.shape[-1]    # length is last dimension of shape
-
+        masks = an n-length list of mask image data
+    @returns:
+        a single 2D numpy array with pixel values 1-n reprensenting n classes
+        from n masks
+    '''
+    object_class = 1
+    mask_size = np.shape(masks)[1:3]
+    target = np.zeros(mask_size)
+    for mask in masks:
+        target = target + mask * object_class
+        object_class = object_class + 1
+    return target
 
 class CTMaskDataset(Dataset):
     """ A dataset for accessing a folder of 2D image data files in .npy format. 
@@ -55,21 +48,21 @@ class CTMaskDataset(Dataset):
     """
     def __init__(self, 
                  data_dir = environ['REVEAL_DATA'] + '\\train_data\\',
-                 mask_criteria = ['spine'],
+                 mask_criteria = ['spine_mask'],
                  augment = True):
         ct_path = Path(data_dir + '/ct')
         self.mask_criteria = mask_criteria
         self.augment = augment
         # look for the required ct .npy image files
         self.ct_files = [file.__str__() for file in list(ct_path.glob('*'))]
-        # look for the required masks
-        if 'spine' in mask_criteria:
+        # look for the required masks and make lists of the paths
+        if 'spine_mask' in mask_criteria:
             spine_path = Path(data_dir + '/spine')
             self.spine_files = [file.__str__() for file in list(spine_path.glob('*'))]
-        if 'sternum' in mask_criteria:
+        if 'stern_mask' in mask_criteria:
             stern_path = Path(data_dir + '/sternum')
             self.stern_files = [file.__str__() for file in list(stern_path.glob('*'))]
-        if 'pelvis' in mask_criteria:
+        if 'pelvi_mask' in mask_criteria:
             pelvi_path = Path(data_dir + '/pelvis')
             self.pelvi_files = [file.__str__() for file in list(pelvi_path.glob('*'))]
            
@@ -77,20 +70,25 @@ class CTMaskDataset(Dataset):
         # load up the ct data into a dict 
         ct = np.load(self.ct_files[idx])
         data_dict = {'ct': ct}
-        # load up the mask data matching the mask_criteria
-        if 'spine' in self.mask_criteria:
-            spine = np.load(self.spine_files[idx])
-            data_dict['spine'] = spine
-        if 'sternum' in self.mask_criteria:
+        class_count = 1
+        # put all mask data into single image of class indexes 
+        # (required for multiclass CE loss)
+        data_dict['target'] = np.zeros(ct.shape)          
+        if 'spine_mask' in self.mask_criteria:                 
+            spine = np.load(self.spine_files[idx])     
+            data_dict['target'][spine != 0] = class_count
+            class_count += 1
+        if 'stern_mask' in self.mask_criteria:
             stern = np.load(self.stern_files[idx])
-            data_dict['stern'] = stern  
-        if 'pelvis' in self.mask_criteria:
+            data_dict['target'][stern != 0] = class_count
+            class_count += 1
+        if 'pelvi_mask' in self.mask_criteria:
             pelvi = np.load(self.pelvi_files[idx])
-            data_dict['pelvi'] = pelvi
+            data_dict['target'][pelvi != 0] = class_count
+            class_count += 1
         # optionally perform augmentation
         if self.augment == True:
             data_dict = augment_axial(data_dict)
-
         # convert to npy arrays
         for item in data_dict:
             data_dict[item] = torch.from_numpy(data_dict[item]).unsqueeze(0).float()
@@ -99,3 +97,26 @@ class CTMaskDataset(Dataset):
     
     def __len__(self):
         return len(self.ct_files)   # ct_files always populated at __init__()
+
+
+class VolumeDataset(Dataset):
+    """ A Dataset genereated from a [vol_idx] representing a .mat file.
+    Files must have particular naming convention: 'patient1_day1.mat'
+
+    @params:
+        vol_idx: the [p, d] index to be loaded into the Dataset.
+        folder: the folder containing the 'patient#_day#.mat' files.
+        var: the variable to load from the .mat file (saves time?).
+    """
+    def __init__(self,
+                 vol_idx,
+                 folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
+                 var = 'ct'):
+        self.ct_vol = loadMatData(vol_idx, folder, var)
+       
+    def __getitem__(self, idx):
+        ct = torch.from_numpy(self.ct_vol[:, :, idx]).unsqueeze(0).float()
+        return {'ct': ct}
+
+    def __len__(self):
+        return self.ct_vol.shape[-1]    # length is last dimension of shape

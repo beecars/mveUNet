@@ -18,11 +18,13 @@ from losses import FocalLoss
 from utils.dataset import CTMaskDataset
 from utils.utils import generateNpySlices, generateSplits, getScanCount
 
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 
 def train_net(net,
               device,
               train_idxs,
               val_idxs,
+              mask_names,
               epochs = 10,
               batch_size = 1,
               lr = 0.0003,
@@ -30,21 +32,15 @@ def train_net(net,
               splits = 1,
               current_split = 0):
 
-    # generateNpySlices(train_idxs, plane = 'axial')
-
     split = current_split + 1
     if net.n_classes > 1:   # for multiclass training
-        train_dataset = CTMaskDataset()      
+        train_dataset = CTMaskDataset(mask_criteria=mask_names)      
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.RMSprop(net.parameters(), 
-                                  lr = lr, 
-                                  weight_decay = 1e-8, 
-                                  momentum = 0.9)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
-                                                         'max', 
-                                                         patience = 8)
+        optimizer = optim.AdamW(net.parameters(), 
+                                lr = lr, 
+                                weight_decay = .0)
     else:   # for single class training
-        train_dataset = CTMaskDataset()     
+        train_dataset = CTMaskDataset()
         # criterion = nn.BCEWithLogitsLoss()
         criterion = FocalLoss()
         optimizer = optim.AdamW(net.parameters(), 
@@ -64,11 +60,9 @@ def train_net(net,
     train_loader = DataLoader(train_dataset, 
                               batch_size=batch_size, 
                               shuffle=True, 
-                              num_workers=8, 
+                              num_workers=1, 
                               pin_memory=True)
 
-    
-    
     n_train = len(train_dataset)
     n_val = getScanCount(val_idxs)
     writer = SummaryWriter(log_dir = dir_logging)
@@ -80,10 +74,9 @@ def train_net(net,
                      f'\tLoss Function:         {criterion.__class__.__name__}\n'
                      f'\tOptimizer:             {optimizer.__class__.__name__}\n'
                      f'\tOptimizer Args:        {optimizer.defaults}\n'
-     
                      f'\tLearning rate:         {lr}\n'
-                     f'\tCheckpoints:           {save_cp}\n'
                      f'\tDevice:                {device.type}\n'
+                     f'\tClass masks:           {mask_names}\n'
                      f'\tTraining size:         {n_train}\n'
                      f'\tValidation size:       {n_val}\n'
                      f'\tValidataion Volumes:   {val_idxs}\n'
@@ -108,24 +101,27 @@ def train_net(net,
                   bar_format = '{l_bar}{bar:60}{r_bar}{bar:-10b}') as pbar:
 
             for i, batch in enumerate(train_loader):
-                imgs = batch['ct']
-                true_masks = batch['spine']
+                imgs = batch['ct'] # (N, Channel, H, W)
+                if net.n_classes > 1:
+                    true_mask = batch['target'].squeeze(1) # (N, H, W)
+                else:
+                    true_mask = batch['target'] # (N, Channel, H, W)
 
                 # load image and mask to device
                 imgs = imgs.to(device=device, dtype=torch.float32)
                 mask_type = torch.float32 if net.n_classes == 1 else torch.long
-                true_masks = true_masks.to(device=device, dtype=mask_type)
+                true_mask = true_mask.to(device=device, dtype=mask_type)
 
                 # forward pass image through model
                 pred_masks = net(imgs)
 
                 # calcululate and log loss
-                loss = criterion(pred_masks, true_masks)
+                loss = criterion(pred_masks, true_mask)
                 epoch_loss += loss.item()
                 writer.add_scalar(f'split_{split}/train_loss', loss.item(), global_step)
                 pbar.set_postfix(**{'loss (batch)': round(loss.item(), 5)})
 
-                # propogate the loss
+                # backpropogate the loss
                 optimizer.zero_grad()
                 loss.backward()
                 # nn.utils.clip_grad_value_(net.parameters(), 0.1)
@@ -138,11 +134,12 @@ def train_net(net,
                 if i in [round(len(train_loader)*batch_num/10) for batch_num in range(1,10)]:
                     # validation round
                     net.eval()  
-                    dice, iou = eval_volumes(net, 
-                                             device,
-                                             val_idxs,
-                                             p_threshold = 0.5)
-                   
+                    dices, ious = eval_volumes(net, 
+                                               device,
+                                               val_idxs,
+                                               mask_names,
+                                               p_threshold = 0.5)
+                    
                     # step through learning sheduler
                     # scheduler.step()
 
@@ -155,11 +152,8 @@ def train_net(net,
                     net.train()
                 
                     # log validation metrics
-                    if net.n_classes > 1:
-                        writer.add_scalar(f'split_{split}/validation/cross_entropy', iou, global_step)
-                    else:
-                        writer.add_scalar(f'split_{split}/validation/dice', dice, global_step)
-                        writer.add_scalar(f'split_{split}/validation/iou', iou, global_step)
+                    writer.add_scalars(f'split_{split}/dice', dices, global_step)
+                    writer.add_scalars(f'split_{split}/iou', ious, global_step)
                     
     if save_cp:
         torch.save(net.state_dict(),
@@ -173,7 +167,7 @@ if __name__ == '__main__':
     ############################################################################
     ### SET LOGGING DIRECTORY 
     ### Model checkpoint and interrupt also saved here.
-    subfolder = 'hyperparam_tuning'
+    subfolder = 'multiclass testing'
     ############################################################################
     dt_string = datetime.now().strftime('%Y-%m-%d_%H.%M')
     dir_logging = 'unet-2D/.runs/{}/{}/'.format(subfolder, dt_string)
@@ -197,19 +191,17 @@ if __name__ == '__main__':
     ### Can do cross-validation with lists of training and validation splits.
     # all_idxs = [[a , b] for b in range(1,4) for a in range(1,23)]
     # val_idxs, trn_idxs = generateSplits(all_idxs)
-    val_idxs = [[[1, 2]]]
-    trn_idxs = [[[6, 3], [19, 3], [17, 3], [4, 3], [12, 3], [8, 3], [2, 3], 
-                 [16, 1], [21, 3], [19, 2], [3, 1], [14, 3], [11, 3], [5, 2], 
-                 [18, 3], [7, 3], [9, 1], [13, 3], [10, 3]]]
-    # for compatibility with the cross training nature...
-    # val_idxs_splits, trn_idxs_splits = generateCrossValidationSplits(all_idxs)
+    val_idxs = [[[2, 1], [2, 3]]]
+    trn_idxs = [[[1, 2], [3, 3], [5, 3], [5, 2], [4, 2], [5, 1], [3, 2], [4, 1],
+                 [6, 1], [6, 3], [1, 3], [3, 1], [1, 1], [4, 3]]]
+    mask_names = ['spine_mask', 'stern_mask', 'pelvi_mask']
+    # generateNpySlices(trn_idxs, mask_criteria=['ct', 'spine_mask', 'pelvi_mask', 'stern_mask'])
     splits = 1
     ############################################################################
 
     device = torch.device('cuda')
-    logging.info(f'Using device {device}')
 
-    net = UNet(n_channels=1, n_classes=1, bilinear=False)
+    net = UNet(n_channels=1, n_classes=4, bilinear=False)
     # save state for model re-initialization during cross-validation
     torch.save(net.state_dict(), dir_logging + 'intial_state.pt')
     
@@ -230,6 +222,7 @@ if __name__ == '__main__':
                       device,
                       trn_idxs[split],
                       val_idxs[split],
+                      mask_names,
                       epochs = 32,
                       batch_size = 6,
                       lr = 1e-4,

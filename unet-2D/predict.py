@@ -23,12 +23,13 @@ def predict_vol_from_vol(net,
     p_threshold : probability above which prediction is considered True.
     
     @return:
-    pred_volume : a prediction volume
+    pred_volume : a prediction volume w/ shape: [n_classes, H, W, Z] 
     """
     volume = loadMatData(vol_idx, data = 'ct')
     vol_shape = volume.shape
     n_cts = volume.shape[-1]
-    pred_volume = torch.empty(vol_shape[0], vol_shape[1], vol_shape[2])
+
+    pred_volume = torch.empty(net.n_classes, vol_shape[0], vol_shape[1], vol_shape[2])
 
     with tqdm(total = n_cts,   # progress bar
               desc = f'Predicting Volume', 
@@ -42,18 +43,18 @@ def predict_vol_from_vol(net,
                 ct = torch.Tensor(volume[:, :, idx]).unsqueeze(0).unsqueeze(0)
                 ct = ct.to(device=device, dtype=torch.float32)
 
-                pred = net(ct)
-                pred = torch.squeeze(pred)
+                pred = net(ct) # output shape: (1, Classes, H, W)
+                pred = torch.squeeze(pred) # out shape: (Classes, H, W)
 
                 if net.n_classes > 1:
-                    pred = F.softmax(pred, dim = 1)
+                    pred = F.softmax(pred, dim = 0)
                 else:
                     pred = torch.sigmoid(pred)
 
-                pred_volume[:, :, idx] = pred
+                pred_volume[:, :, :, idx] = pred
                 
                 pbar.update()
-        
+            
         if threshold == True:
             pred_volume = pred_volume > p_threshold
 

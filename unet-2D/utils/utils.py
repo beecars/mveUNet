@@ -162,7 +162,8 @@ def generateNpySlices(vol_idxs,
                       vol_folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
                       output_folder = environ['REVEAL_DATA'] + '\\train_data\\', 
                       mask_criteria = ['ct', 'spine_mask'],
-                      plane = 'axial'):
+                      plane = 'axial',
+                      no_empties = False):
     """ From a list of vol_idxs, generate 2D .npy files with which to train a
     convnet.
 
@@ -196,9 +197,9 @@ def generateNpySlices(vol_idxs,
         makedirs(output_folder + 'ct/', exist_ok = True)
     if 'spine_mask' in mask_criteria:
         makedirs(output_folder + 'spine/', exist_ok = True)
-    if 'sternum_mask' in mask_criteria:
+    if 'stern_mask' in mask_criteria:
         makedirs(output_folder + 'sternum/', exist_ok = True)
-    if 'pelvis_mask' in mask_criteria:
+    if 'pelvi_mask' in mask_criteria:
         makedirs(output_folder + 'pelvis/', exist_ok = True)
     
     with tqdm(total = len(vol_file_list),    # progress bar
@@ -214,53 +215,54 @@ def generateNpySlices(vol_idxs,
             if plane == 'axial':
                  # sample the volume on the "default" axial axis and save
                 for idx in range(0, volume['ct'].shape[2]):
-                    if 'ct' in mask_criteria:
-                        np.save(output_folder + 'ct/' f'{file_num}_ct.npy', 
-                                volume['ct'][:, :, idx])
                     if 'spine_mask' in mask_criteria:
                         np.save(output_folder + 'spine/' f'{file_num}_spine.npy', 
                                 volume['spine_mask'][:, :, idx])
-                    if 'sternum_mask' in mask_criteria:
-                        np.save(output_folder + 'sternum/' f'{file_num}_sternum.npy', 
-                                volume['stern_mask'][:, :, idx])
-                    if 'pelvis_mask' in mask_criteria:
+                    if 'stern_mask' in mask_criteria:
+                        if no_empties == True and np.count_nonzero(volume['stern_mask'][:, :, idx]) == 0:
+                            continue
+                        else:
+                            np.save(output_folder + 'sternum/' f'{file_num}_sternum.npy', 
+                                    volume['stern_mask'][:, :, idx])
+                    if 'pelvi_mask' in mask_criteria:
                         np.save(output_folder + 'pelvis/' f'{file_num}_pelvis.npy', 
                                 volume['pelvi_mask'][:, :, idx])
+                    if 'ct' in mask_criteria:
+                        np.save(output_folder + 'ct/' f'{file_num}_ct.npy', 
+                                volume['ct'][:, :, idx])
                     file_num += 1
                 pbar.update(1)  # progress bar
             if plane == 'saggital':
                 for idx in range(0, volume['ct'].shape[1]):
-                    if (idx % 10 == 0) or (np.count_nonzero(volume['spine_mask'][:, idx, :]) > 0):
-                        if 'spine_mask' in mask_criteria:
-                            np.save(output_folder + 'spine/' f'{file_num}_spine.npy', 
-                                    volume['spine_mask'][:, idx, :])
-                        if 'ct' in mask_criteria:
-                            np.save(output_folder + 'ct/' f'{file_num}_ct.npy', 
-                                    volume['ct'][:, idx, :])
-                        if 'sternum_mask' in mask_criteria:
-                            np.save(output_folder + 'sternum/' f'{file_num}_sternum.npy', 
-                                    volume['stern_mask'][:, idx, :])
-                        if 'pelvis_mask' in mask_criteria:
-                            np.save(output_folder + 'pelvis/' f'{file_num}_pelvis.npy', 
-                                    volume['pelvi_mask'][:, idx, :])
-                        file_num += 1
+                    if 'spine_mask' in mask_criteria:
+                        np.save(output_folder + 'spine/' f'{file_num}_spine.npy', 
+                                volume['spine_mask'][:, idx, :])
+                    if 'ct' in mask_criteria:
+                        np.save(output_folder + 'ct/' f'{file_num}_ct.npy', 
+                                volume['ct'][:, idx, :])
+                    if 'stern_mask' in mask_criteria:
+                        np.save(output_folder + 'sternum/' f'{file_num}_sternum.npy', 
+                                volume['stern_mask'][:, idx, :])
+                    if 'pelvi_mask' in mask_criteria:
+                        np.save(output_folder + 'pelvis/' f'{file_num}_pelvis.npy', 
+                                volume['pelvi_mask'][:, idx, :])
+                    file_num += 1
                 pbar.update(1)  # progress bar
             if plane == 'coronal':
                 for idx in range(0, volume['ct'].shape[0]):
-                    if (idx % 10 == 0 or np.count_nonzero(volume['spine_mask'][:, idx, :]) > 0):
-                        if 'ct' in mask_criteria:
-                            np.save(output_folder + 'ct/' f'{file_num}_ct.npy', 
-                                    volume['ct'][idx, :, :])
-                        if 'spine_mask' in mask_criteria:
-                            np.save(output_folder + 'spine/' f'{file_num}_spine.npy', 
-                                    volume['spine_mask'][idx, :, :])
-                        if 'sternum_mask' in mask_criteria:
-                            np.save(output_folder + 'sternum/' f'{file_num}_sternum.npy', 
-                                    volume['stern_mask'][idx, :, :])
-                        if 'pelvis_mask' in mask_criteria:
-                            np.save(output_folder + 'pelvis/' f'{file_num}_pelvis.npy', 
-                                    volume['pelvi_mask'][idx, :, :])
-                        file_num += 1
+                    if 'ct' in mask_criteria:
+                        np.save(output_folder + 'ct/' f'{file_num}_ct.npy', 
+                                volume['ct'][idx, :, :])
+                    if 'spine_mask' in mask_criteria:
+                        np.save(output_folder + 'spine/' f'{file_num}_spine.npy', 
+                                volume['spine_mask'][idx, :, :])
+                    if 'stern_mask' in mask_criteria:
+                        np.save(output_folder + 'sternum/' f'{file_num}_sternum.npy', 
+                                volume['stern_mask'][idx, :, :])
+                    if 'pelvi_mask' in mask_criteria:
+                        np.save(output_folder + 'pelvis/' f'{file_num}_pelvis.npy', 
+                                volume['pelvi_mask'][idx, :, :])
+                    file_num += 1
                 pbar.update(1)  # progress bar
 
 
