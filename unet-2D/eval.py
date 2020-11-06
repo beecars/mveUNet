@@ -90,7 +90,7 @@ def eval_volume(net,
         dice = dice_coeff(pred_volume[class_idx], true_mask)
         dices[mask_name] = dice
 
-    return ious, dices
+    return dices, ious
 
 def eval_volumes(net,
                 device,
@@ -110,9 +110,9 @@ def eval_volumes(net,
     dice, iou: returns the average of the dice and iou for all vol_idxs.
     """
     # intialize dicts to hold scores for averaging
-    dice_sum = {mask_name : 0 for mask_name in mask_names}
+    dice_sums = {mask_name : 0 for mask_name in mask_names}
     dice_avgs = {mask_name : 0 for mask_name in mask_names}
-    iou_sum = {mask_name : 0 for mask_name in mask_names}
+    iou_sums = {mask_name : 0 for mask_name in mask_names}
     iou_avgs = {mask_name : 0 for mask_name in mask_names}
     for vol_idx in vol_idxs:
         dices, ious = eval_volume(net,
@@ -122,11 +122,11 @@ def eval_volumes(net,
                                 p_threshold = p_threshold)
         # add the score of each evaluated volume to the sum
         for mask_name in mask_names:
-            dice_sum[mask_name] = dice_sum[mask_name] + dices[mask_name]
-            iou_sum[mask_name] = iou_sum[mask_name] + ious[mask_name]
+            dice_sums[mask_name] = dice_sums[mask_name] + dices[mask_name]
+            iou_sums[mask_name] = iou_sums[mask_name] + ious[mask_name]
         # compute the average scores
         for mask_name in mask_names:
-            dice_avgs[mask_name] = dice_sum[mask_name]/len(vol_idxs)
-            iou_avgs[mask_name] = iou_sum[mask_name]/len(vol_idxs)
+            dice_avgs[mask_name] = dice_sums[mask_name]/len(vol_idxs)
+            iou_avgs[mask_name] = iou_sums[mask_name]/len(vol_idxs)
 
     return dice_avgs, iou_avgs
