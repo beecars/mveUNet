@@ -36,15 +36,10 @@ def train_net(net,
                                 weight_decay = .0)
     else:   # for single class training
         train_dataset = CTMaskDataset()
-        # criterion = nn.BCEWithLogitsLoss()
         criterion = FocalLoss()
         optimizer = optim.AdamW(net.parameters(), 
                                 lr = lr, 
                                 weight_decay = .0)
-        # optimizer = optim.RMSprop(net.parameters(), 
-        #                           lr = lr, 
-        #                           weight_decay = 0, 
-        #                           momentum = 0)
         # lrmultiply = lambda epoch: 10**(epoch/5)
         # scheduler = optim.lr_scheduler.LambdaLR(optimizer, 
         #                                         lr_lambda = lrmultiply)
@@ -126,6 +121,9 @@ def train_net(net,
                                                val_idxs,
                                                mask_names,
                                                p_threshold = 0.5)
+                    # log validation metrics
+                    writer.add_scalars(f'dice', dices, global_step)
+                    writer.add_scalars(f'iou', ious, global_step)
                     
                     # step through learning sheduler
                     # scheduler.step()
@@ -138,10 +136,6 @@ def train_net(net,
                     # set net back to train mode
                     net.train()
                 
-                    # log validation metrics
-                    writer.add_scalars(f'dice', dices, global_step)
-                    writer.add_scalars(f'iou', ious, global_step)
-                    
     if save_cp:
         torch.save(net.state_dict(),
                    dir_logging + f'model_state.pth')
@@ -152,17 +146,22 @@ if __name__ == '__main__':
     ############################################################################
     ### GENERAL TRAINING SCHEME SET UP
     ### log folder / description / train & validation volumes / masks
+    
     # subfolder name and description for run logs
     subfolder = 'multiclass_testing'
-    run_description = 'test run for 3-class UNet on REVEAL patient data.'
+    run_description = 'multiclass debugging...'
+    
     # training/validation splits by patient vol_idx (see README)
     val_idxs = [[2, 1], [2, 3]]
-    trn_idxs = [[1, 2], [3, 3], [5, 3], [5, 2], [4, 2], [5, 1], [3, 2], [4, 1],
-                 [6, 1], [6, 3], [1, 3], [3, 1], [1, 1], [4, 3]]
+    trn_idxs = [[1, 2], [3, 3], [5, 3], [5, 2], [4, 2], [5, 1], [3, 2], [4, 1], 
+                [6, 1], [6, 3], [1, 3], [3, 1], [1, 1], [4, 3]]
+    # generateNpySlices(trn_idxs, mask_names = ['spine_mask'])
+    
     # mask names defining the class masks (see README)
-    mask_names = ['stern_mask']
+    mask_names = ['spine_mask']
     n_classes = len(mask_names)+1 if len(mask_names) > 1 else 1
     ############################################################################
+    
     dt_string = datetime.now().strftime('%Y-%m-%d_%H.%M')
     dir_logging = 'unet-2D/.runs/{}/{}/'.format(subfolder, dt_string)
     try:
@@ -193,7 +192,7 @@ if __name__ == '__main__':
                   trn_idxs,
                   val_idxs,
                   mask_names,
-                  epochs = 32,
+                  epochs = 16,
                   batch_size = 6,
                   lr = 1e-4,
                   save_cp = True)
