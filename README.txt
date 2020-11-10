@@ -64,7 +64,8 @@ REVEAL imaging project code
          performing actions to reproject or re-slice the volume along 
          different image planes. 
 ================================================================================
-Contents:              
+================================================================================
+CONTENTS:              
 ---------
 unet-2D/
    [PYTORCH] UNet implementation.
@@ -83,4 +84,73 @@ unet-2D/
       -- dataset.py: contains CTMaskDataset for training and VolumeDataset 
                      (which is not yet used)
       -- utils.py: contains various important utilily functions.
---------------------------------------------------------------------------------
+      -- 
+================================================================================
+================================================================================
+INSTRUCTIONS FOR USE ON REVEAL DATA:
+------------------------------------
+0. Ensure you have patient volume data stored in the structure describes in the
+   "IMPORTANT NOTES" section at the top of this file.
+00. Ensure you have "os.environ['REVEAL_DATA']" a.k.a. a user or system-level 
+    environment variable "REVEAL_DATA" set to the location of your data.
+
+1. Create training data for the UNet.
+   
+   A. Recommmend a .ipynb for this.      
+   
+   B. Run "generateSplits()" in utils.py to generate a stratified training/vali-
+      dation split. Or, you know, do it by hand.
+      
+      a. Choose what classes you want to include in the dataset by passing
+         the "mask_critera" argument. The mask_criteria must match the names of
+         masks in the patient#day#.mat files.
+   
+   C. Use the training splits in "generateNpySlices()".
+      
+      a. Again you need to pass class data, this time as a "mask_names" 
+         argument.
+   
+   D. Ensure the .npy slices (2D image arrays) are where they are supposed to be.
+      
+      a. Default folder is "os.environ['REVEAL_DATA']/train_data".
+   
+2. Set-up the UNet.
+
+   A. Scroll to the bottom of train.py. 
+
+   B. The   if __name__ == '__main__':    code will run only when train.py is 
+      called to run standalone. 
+   
+   C. Change the "subfolder" string to change the name of the subfolder where
+      your run log data will be stored. Also add a run description for the log,
+      if you want.
+
+      a. The default parent folder is "reveal/unet-2D/.runs/". So your run logs
+         will be stored at "reveal/unet-2D/.runs/<subfolder>/"
+
+   D. Add val_idxs and trn_idxs (see IMPORTANT NOTES). These can be from 
+      "generateSplits()", or whatever you want them to be. But:
+      
+      a. They shouldn't be patient volumes associated with any of the scans in 
+         the training data made in (1). 
+         
+      b. The .mat files that the val_idxs represent must have all the masks for 
+         the classes you chose. Otherwise it won't work at all.
+
+   E. Change the "mask_names" to be the same list of masks used for the function 
+      "generateNpySlices()".
+
+      a. The lists have to be the same order. If they aren't the same order, the 
+         network mix up which class is associated with which mask. It will be 
+         terrible. 
+   
+   F. Modify anything else you want about the UNet training scheme found in the 
+      call to train_net() and in train_net() itself. Epochs. Batch size. 
+      Learning rate. Learning rate scheduling. Loss functions. Optimizers. 
+      Optimizer hyperparameters. Etc.
+
+3. Run train.py.
+
+   a. It trains.
+
+4. Can run tensorboard to analyze model during training! Or after! Whenever!
