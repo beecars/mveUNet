@@ -7,25 +7,3 @@ unet-3D/brats
 *.h5
 *.pkl
 *.log
-
-below from unet-3D
-----------
-*.nii.gz
-*.nii
-.idea
-*.zip
-HGG/
-LGG/
-.ipynb_checkpoints
-brats/models
-*.pkl
-data.hdf5
-*.log
-*.h5
-*.ipynb
-*.pyc
-*.json
-test_dir
-*.hdr
-*.img
-.DS_Store
