@@ -51,10 +51,10 @@ def getScanCount(vol_idxs,
 
 def generateSplits(vol_idxs,
                    vol_folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
-                   mask_criteria = ['ct', 'spine_mask'],
+                   mask_names = ['ct', 'spine_mask'],
                    val_ratio = 0.15):
     """ Search through the given folder, find .mat files that contain all the 
-    mask data passed by 'mask_criteria'. Split up those into a training and a 
+    mask data passed by 'mask_names'. Split up those into a training and a 
     validation set. Any given patient will only appear in EITHER the validation 
     or training set, but not both. This is by design.
 
@@ -63,7 +63,7 @@ def generateSplits(vol_idxs,
     @params:
     vol_idxs: a list of vol_idx to be inspected
     vol_folder: the folder containing the 'patient#_day#.mat' files.
-    mask_criteria: list of strings identifying the masks that must be present
+    mask_names: list of strings identifying the masks that must be present
                    in the .mat files for the volume to be considered in the 
                    training/validation splits.
     val_ratio: ratio of the size of the validation set to the training set. 
@@ -78,7 +78,7 @@ def generateSplits(vol_idxs,
         vol_file = (vol_folder + f'patient{vol_idx[0]}_day{vol_idx[1]}.mat')
         vol = whosmat(vol_file)
         # this crazy list comp. checks if the vol doesn't contain the masks
-        if not all([criteria in [item[0] for item in vol] for criteria in mask_criteria]):
+        if not all([names in [item[0] for item in vol] for names in mask_names]):
             continue
         # otherwise add it to the list
         compatible_vol_idxs.append(vol_idx)
@@ -114,10 +114,10 @@ def generateSplits(vol_idxs,
 
 def generateCrossValidationSplits(vol_idxs,
                    vol_folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
-                   mask_criteria = ['ct', 'spine_mask'],
+                   mask_names = ['ct', 'spine_mask'],
                    n_folds = 7):
     """ Search through the given folder, find .mat files that contain all the 
-    mask data passed by 'mask_criteria'. Split up those into K number of 
+    mask data passed by 'mask_names'. Split up those into K number of 
     training and validation sets. For any given split, any given patient will 
     only appear in EITHER the validation or training set, but not both. This 
     also means neccessarily that each patient will appear in one and only one
@@ -128,7 +128,7 @@ def generateCrossValidationSplits(vol_idxs,
     @params:
     vol_idxs: a list of vol_idx to be inspected
     vol_folder: the folder containing the 'patient#_day#.mat' files.
-    mask_criteria: list of strings identifying the masks that must be present
+    mask_names: list of strings identifying the masks that must be present
                    in the .mat files for the volume to be considered in the 
                    training/validation splits.
     n_folds: the number of folds/splits for the k-fold training scheme. 
@@ -145,7 +145,7 @@ def generateCrossValidationSplits(vol_idxs,
         vol_file = (vol_folder + f'patient{vol_idx[0]}_day{vol_idx[1]}.mat')
         vol = whosmat(vol_file)
         # this crazy list comp. checks if the vol doesn't contain the masks
-        if not all([criteria in [item[0] for item in vol] for criteria in mask_criteria]):
+        if not all([names in [item[0] for item in vol] for names in mask_names]):
             continue
         # otherwise add it to the list
         compatible_vol_idxs.append(vol_idx)
