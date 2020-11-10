@@ -78,13 +78,14 @@ unet-2D/
    -- losses.py: loss functions for training.
    -- eval.py: validation metrics.
    -- predict.py: function to predict/segment volume from a volume index.
+   -- tasks.ipynb: jupyter notebook with some useful tasks set up.
    /unet/
       -- contains the pytorch unet model and component parts.
    /utils/
       -- dataset.py: contains CTMaskDataset for training and VolumeDataset 
                      (which is not yet used)
       -- utils.py: contains various important utilily functions.
-      -- 
+      -- augment.py: albumentations augmentation implementation. 
 ================================================================================
 ================================================================================
 INSTRUCTIONS FOR USE ON REVEAL DATA:
@@ -96,7 +97,7 @@ INSTRUCTIONS FOR USE ON REVEAL DATA:
 
 1. Create training data for the UNet.
    
-   A. Recommmend a .ipynb for this.      
+   A. Recommmend a .ipynb for this. Maybe start at tasks.ipynb.    
    
    B. Run "generateSplits()" in utils.py to generate a stratified training/vali-
       dation split. Or, you know, do it by hand.
