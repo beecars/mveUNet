@@ -90,7 +90,7 @@ def eval_volume(net,
         # calculate dice coefficient between volumes
         dice = dice_coeff(pred_volume[class_idx], true_mask)
         dices[mask_name] = dice
-
+    
     return dices, ious
 
 def eval_volumes(net,
@@ -118,10 +118,10 @@ def eval_volumes(net,
     iou_avgs = {mask_name : 0 for mask_name in mask_names}
     for vol_idx in vol_idxs:
         dices, ious = eval_volume(net,
-                                device,
-                                vol_idx,
-                                mask_names,
-                                p_threshold = p_threshold)
+                                  device,
+                                  vol_idx,
+                                  mask_names,
+                                  p_threshold = p_threshold)
         # add the score of each evaluated volume to the sum
         for mask_name in mask_names:
             dice_sums[mask_name] = dice_sums[mask_name] + dices[mask_name]
