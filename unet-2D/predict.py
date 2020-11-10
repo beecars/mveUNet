@@ -25,6 +25,7 @@ def predict_vol_from_vol(net,
     @return:
     pred_volume : a prediction volume w/ shape: [n_classes, H, W, Z] 
     """
+    net.eval()
     volume = loadMatData(vol_idx, data = 'ct')
     vol_shape = volume.shape
     n_cts = volume.shape[-1]
