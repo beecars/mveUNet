@@ -148,8 +148,8 @@ if __name__ == '__main__':
     ### log folder / description / train & validation volumes / masks
     
     # subfolder name and description for run logs
-    subfolder = 'multiclass_testing'
-    run_description = 'multiclass debugging...'
+    subfolder = 'new env test'
+    run_description = 'is this thing on?'
     
     # training/validation splits by patient vol_idx (see README)
     val_idxs = [[2, 1], [2, 3]]
