@@ -277,7 +277,7 @@ def generateNpySlices(vol_idxs,
                 pbar.update(1)  # progress bar
 
 
-def plotSomeImages(figures, nrows = 1, ncols=1, interp='none'):
+def plotSomeImages(figures, nrows = 1, ncols=1, interp='none', vmin = None, vmax = None):
     ''' Plot a dictionary of figures.
     @params:
         figures = <title, figure> dictionary
@@ -287,8 +287,11 @@ def plotSomeImages(figures, nrows = 1, ncols=1, interp='none'):
     '''
     fig, axeslist = plt.subplots(ncols=ncols, nrows=nrows, figsize=(10,10))
     for ind,title in enumerate(figures):
-        axeslist.ravel()[ind].imshow(figures[title], cmap='cividis', interpolation=interp)
+        axeslist.ravel()[ind].imshow(figures[title], 
+                                     cmap='cividis', 
+                                     interpolation=interp, 
+                                     vmin = vmin, 
+                                     vmax = vmax)
         axeslist.ravel()[ind].set_title(title, fontsize=15)
         axeslist.ravel()[ind].set_axis_off()
     plt.tight_layout() # optional
-

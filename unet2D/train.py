@@ -1,5 +1,6 @@
 import sys
 import os
+os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 import logging
 from shutil import rmtree
 from datetime import datetime
@@ -148,14 +149,13 @@ if __name__ == '__main__':
     ### log folder / description / train & validation volumes / masks
     
     # subfolder name and description for run logs
-    subfolder = 'new env test'
-    run_description = 'is this thing on?'
+    subfolder = 'name_me'
+    run_description = 'ready to train!'
     
     # training/validation splits by patient vol_idx (see README)
     val_idxs = [[2, 1], [2, 3]]
-    trn_idxs = [[1, 2], [3, 3], [5, 3], [5, 2], [4, 2], [5, 1], [3, 2], [4, 1], 
-                [6, 1], [6, 3], [1, 3], [3, 1], [1, 1], [4, 3]]
-    # generateNpySlices(trn_idxs, mask_names = ['spine_mask'])
+    trn_idxs = [[1, 2], [3, 3], [5, 3], [5, 2]]
+    generateNpySlices(trn_idxs, mask_names = ['spine_mask'])
     
     # mask names defining the class masks (see README)
     mask_names = ['spine_mask']
@@ -200,7 +200,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         torch.save(net.state_dict(), dir_logging + 'INTERRUPTED.pt')
         rmtree(os.environ['REVEAL_DATA'] + '/train_data/')
-        logging.info('Saved interrupt')
+        logging.info('Saved interrupted state...')
         try:
             sys.exit(0)
         except SystemExit:

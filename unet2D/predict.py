@@ -1,9 +1,6 @@
-import numpy as np
-from numpy.core.fromnumeric import shape
 import torch
 import torch.nn.functional as F
 from tqdm.std import tqdm
-from scipy.ndimage import rotate as imrot
 
 from utils.utils import loadMatData
 
@@ -60,3 +57,38 @@ def predict_vol_from_vol(net,
             pred_volume = pred_volume > p_threshold
 
     return pred_volume.numpy().astype(float)
+
+def predict_img(net,
+                device,
+                img,
+                threshold = True,
+                p_threshold = 0.5):
+    """ Takes an img and predicts a segmentation from a CNN model.
+    
+    @params:
+    net: pytorch convnet model.
+    device: pytorch device for computation.
+    img: image from which to predict a segmentation.
+    threshold: boolean for whether or not to threshold the output.
+    p_threshold: probability above which prediction is considered True.
+    
+    @return:
+    out_img: a prediction image.
+    """
+    net.eval()
+    
+    with torch.no_grad():
+        img = torch.Tensor(img).unsqueeze(0).unsqueeze(0)
+        img = img.to(device=device, dtype=torch.float32)
+        pred = net(img) # output shape: (1, Classes, H, W)
+        pred = torch.squeeze(pred) # out shape: (Classes, H, W)
+
+        if net.n_classes > 1:
+            pred = F.softmax(pred, dim = 0)
+        else:
+            pred = torch.sigmoid(pred)
+        
+    if threshold == True:
+        pred = pred > p_threshold
+
+    return pred.cpu().numpy().astype(float)
