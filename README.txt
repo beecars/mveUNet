@@ -20,7 +20,7 @@ REVEAL imaging project code
          |^| For the scripts in this package to run properly, these .mat 
          |^| volume files need to be stored in a folder: 
          |^|
-         |^|    (os.environ['REVEAL_DATA'] + '/ct_mask_volumes/')
+         |^|    (os.environ['REVEAL_DATA'] + '/ct_pt_volumes/')
          |^|  
          |^|        where os.environ['REVEAL_DATA'] is a system or user-level 
          |^|        environment variable on the local machine.

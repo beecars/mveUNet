@@ -116,12 +116,13 @@ def train_net(net,
                 
                 if i in [round(len(train_loader)*batch_num/10) for batch_num in range(1,10)]:
                     # validation round
-                    net.eval()  
-                    dices, ious = eval_volumes(net, 
-                                               device,
-                                               val_idxs,
-                                               mask_names,
-                                               p_threshold = 0.5)
+                    net.eval()
+                    with torch.no_grad():
+                        dices, ious = eval_volumes(net, 
+                                                   device,
+                                                   val_idxs,
+                                                   mask_names,
+                                                   p_threshold = 0.5)
                     # log validation metrics
                     writer.add_scalars(f'dice', dices, global_step)
                     writer.add_scalars(f'iou', ious, global_step)

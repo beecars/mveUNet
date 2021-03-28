@@ -83,7 +83,7 @@ class VolumeDataset(Dataset):
     """
     def __init__(self,
                  vol_idx,
-                 folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
+                 folder = environ['REVEAL_DATA'] + '\\ct_pt_volumes\\',
                  var = 'ct'):
         self.ct_vol = loadMatData(vol_idx, folder, var)
        

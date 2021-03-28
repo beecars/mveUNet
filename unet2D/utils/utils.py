@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 
 def loadMatData(vol_idx,
-                folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
+                folder = environ['REVEAL_DATA'] + '\\ct_pt_volumes\\',
                 data = 'ct'):
     """
     Loads .mat (MATLAB-type) files into system memory.
@@ -28,7 +28,7 @@ def loadMatData(vol_idx,
 
 
 def getScanCount(vol_idxs,
-                 folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\'):
+                 folder = environ['REVEAL_DATA'] + '\\ct_pt_volumes\\'):
     """
     From a list of vol_idxs determine the number of scans present.
     Used for counting training/validation scans.
@@ -50,7 +50,7 @@ def getScanCount(vol_idxs,
 
 
 def generateSplits(vol_idxs,
-                   vol_folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
+                   vol_folder = environ['REVEAL_DATA'] + '\\ct_pt_volumes\\',
                    mask_names = ['ct', 'spine_mask'],
                    val_ratio = 0.15):
     """ Search through the given folder, find .mat files that contain all the 
@@ -113,7 +113,7 @@ def generateSplits(vol_idxs,
 
 
 def generateCrossValidationSplits(vol_idxs,
-                   vol_folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
+                   vol_folder = environ['REVEAL_DATA'] + '\\ct_pt_volumes\\',
                    mask_names = ['ct', 'spine_mask'],
                    n_folds = 7):
     """ Search through the given folder, find .mat files that contain all the 
@@ -167,7 +167,7 @@ def generateCrossValidationSplits(vol_idxs,
 
 
 def generateNpySlices(vol_idxs,
-                      vol_folder = environ['REVEAL_DATA'] + '\\ct_mask_volumes\\',
+                      vol_folder = environ['REVEAL_DATA'] + '\\ct_pt_volumes\\',
                       output_folder = environ['REVEAL_DATA'] + '\\train_data\\', 
                       mask_names = ['spine_mask', 'stern_mask', 'pelvi_mask'],
                       plane = 'axial',
