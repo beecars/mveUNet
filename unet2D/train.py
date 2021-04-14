@@ -200,7 +200,7 @@ if __name__ == '__main__':
         
     except KeyboardInterrupt:
         torch.save(net.state_dict(), dir_logging + 'INTERRUPTED.pt')
-        rmtree(os.environ['REVEAL_DATA'] + '/train_data/')
+        rmtree(os.environ['DATA'] + '/train_data/')
         logging.info('Saved interrupted state...')
         try:
             sys.exit(0)

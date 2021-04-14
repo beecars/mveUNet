@@ -45,7 +45,7 @@ class CTMaskDataset(Dataset):
     data_dir: the path to the data_dir in the diagram above.
     """
     def __init__(self, 
-                 data_dir = environ['REVEAL_DATA'] + '\\train_data\\',
+                 data_dir = environ['DATA'] + '\\train_data\\',
                  augment = True):
         ct_path = Path(data_dir + '/ct')
         target_path = Path(data_dir + '/target')
@@ -83,7 +83,7 @@ class VolumeDataset(Dataset):
     """
     def __init__(self,
                  vol_idx,
-                 folder = environ['REVEAL_DATA'] + '\\ct_pt_volumes\\',
+                 folder = environ['DATA'] + '\\ct_pt_volumes\\',
                  var = 'ct'):
         self.ct_vol = loadMatData(vol_idx, folder, var)
        
