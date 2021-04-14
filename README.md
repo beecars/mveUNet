@@ -59,7 +59,7 @@ The ".mat" files should also be oriented such that the the first dimension repre
       your run log data will be stored. Also add a run description for the log,
       if you want.
 
-      a. The default parent folder is `"reveal/unet-2D/.runs/"`. So your run logs will be stored at `"reveal/unet-2D/.runs/<subfolder>/"`
+      a. The default parent folder is `"/unet-2D/.runs/"`. So your run logs will be stored at `"/unet-2D/.runs/<subfolder>/"`
 
    3. Add `val_idxs` and `trn_idxs`. These can be from `generateSplits()`, or whatever you want them to be. But:
       
