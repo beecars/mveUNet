@@ -1,5 +1,5 @@
 # Multi-View Ensemble Multiclass UNet
-
+Convnets are widely used for medical image segmentation tasks, and UNet has proven to be an effective model when paired with data augmentation on smaller training datasets. The current best-in-class convnets for semantic segmentation of volume data use computationally expensive 3D convolutional layers. The acceleration hardware used for the convnet training and inference in this thesis is a Nvidia GTX 1070, which only has 8GB of VRAM available for parallel computation. This puts the 3D semantic segmentation convnets just out of reach. Instead, I use a multi-view ensemble of 2D UNets to increase the accuracy of the segmentation. In this ensemble method, the results of three different 2D UNets are combined to form a single prediction volume. Each of the three UNets has been trained on scans from a different “view” – in this case the views are the sagittal, axial, and coronal anatomical planes. The system can also segment the pelvis and sternum.
 ## Dataset
 ---
 For this repository to function, it is required to accompany it with a very specfic patient dataset. 
