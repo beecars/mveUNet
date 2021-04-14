@@ -40,7 +40,7 @@ The ".mat" files should also be oriented such that the the first dimension repre
 ### 2. Create training data for the UNet.   
    1. Run `generateSplits()` in utils.py to generate a stratified training/validation split. Or, you know, do it by hand.
       
-      a. Choose what classes you want to include in the dataset by passing the "mask_critera" argument. The mask_criteria must match the names of masks in the `"patient#day#.mat"` files.
+      a. Choose what classes you want to include in the dataset by passing the "mask_critera" argument. The `mask_names` must match the names of masks in the `"patient#day#.mat"` files.
    
    2. Use the training splits as an arugment to `"generateNpySlices()"` to generate the training data.
       
