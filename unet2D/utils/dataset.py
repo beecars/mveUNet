@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 from pathlib import Path
 from utils.utils import loadMatData
 from os import environ
-from utils.augment import augment_axial
+from utils.augment import augment_ct_mask_pair
 
 def masks2classes(masks):
     ''' 
@@ -46,9 +46,11 @@ class CTMaskDataset(Dataset):
     """
     def __init__(self, 
                  data_dir = environ['DATA'] + '\\train_data\\',
+                 plane = 'axial',
                  augment = True):
         ct_path = Path(data_dir + '/ct')
         target_path = Path(data_dir + '/target')
+        self.plane = plane
         self.augment = augment
         # look for the required .npy image files
         self.ct_files = [file.__str__() for file in list(ct_path.glob('*'))]
@@ -60,8 +62,8 @@ class CTMaskDataset(Dataset):
                      'target': np.load(self.target_files[idx])
         }
         # optionally perform augmentation
-        if self.augment == True:
-            data_dict = augment_axial(data_dict)
+        if self.augment == True: 
+            data_dict = augment_ct_mask_pair(data_dict, self.plane)
         # convert to npy arrays
         for item in data_dict:
             data_dict[item] = torch.from_numpy(data_dict[item]).unsqueeze(0).float()

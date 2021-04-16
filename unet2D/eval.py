@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from predict import predict_vol_from_vol
+from predict import predict_vol_from_vol_idx
 from utils.utils import loadMatData
 
 def jaccard(prediction_vol, truth_vol):
@@ -69,7 +69,7 @@ def eval_volume(net,
                  determined by the mask_names that represent the classes. 
     """
     # create prediction volume
-    pred_volume = predict_vol_from_vol(net,
+    pred_volume = predict_vol_from_vol_idx(net,
                                        device,
                                        vol_idx,
                                        p_threshold = p_threshold)
