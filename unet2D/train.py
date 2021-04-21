@@ -50,11 +50,11 @@ def train_net(net,
     n_train = len(train_dataset)
     n_val = getScanCount(val_idxs)
     
-    train_loader = DataLoader(train_dataset, 
-                              batch_size=batch_size, 
-                              shuffle=True, 
-                              num_workers=1, 
-                              pin_memory=True)
+    train_loader = DataLoader(train_dataset,
+                              batch_size=batch_size,
+                              shuffle = True,
+                              num_workers = 1,
+                              pin_memory = True)
     
     writer = SummaryWriter(log_dir = dir_logging)
     logging.info(f'Training initialization:\n'

@@ -6,7 +6,6 @@ from random import shuffle, choice
 from sklearn.model_selection import GroupKFold
 from tqdm import tqdm
 
-
 def loadMatData(vol_idx,
                 folder = environ['DATA'] + '\\ct_pt_volumes\\',
                 data = 'ct'):
@@ -195,7 +194,7 @@ def generateNpySlices(vol_idxs,
     mask_names: list of strings identifying the masks that must be present
                    in the .mat files for the volume to be considered in the 
                    training/validation splits.
-    plane: the intended image plane, one of 'axial', 'saggital', 'coronal'.
+    plane: the intended image plane, one of 'axial', 'sagittal', 'coronal'.
     """
     # generate file list
     vol_file_list = []
@@ -238,7 +237,7 @@ def generateNpySlices(vol_idxs,
                     file_num += 1
                 pbar.update(1)  # progress bar
             
-            if plane == 'saggital':
+            if plane == 'sagittal':
                 for idx in range(0, volume['ct'].shape[1]):
                     class_count = 1
                     target = np.zeros(volume['ct'].shape[0:2])
