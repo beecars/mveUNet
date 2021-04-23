@@ -1,5 +1,7 @@
 import sys
 import os
+
+from torch.nn.modules.loss import CrossEntropyLoss
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 import logging
 from shutil import rmtree
@@ -14,7 +16,7 @@ from torch.utils.data import DataLoader
 
 from eval import eval_volumes
 from unet import UNet
-from losses import FocalLoss
+from losses import FocalLossBCE, FocalLossCE
 
 from utils.dataset import CTMaskDataset
 from utils.utils import generateNpySlices, generateSplits, getScanCount
@@ -26,18 +28,27 @@ def train_net(net,
               mask_names,
               epochs = 10,
               batch_size = 1,
-              lr = 0.0003,
-              save_cp = True):
+              grad_clip = 1,
+              lr = 0.0001,
+              save_cp = True,
+              init_weights = True):
 
     if net.n_classes > 1:   # for multiclass training
-        train_dataset = CTMaskDataset()      
-        criterion = nn.CrossEntropyLoss()
+        train_dataset = CTMaskDataset()
+        if init_weights == True:
+            class_weights = torch.Tensor([.1, .3, .3, .3]).to(device)
+        else:
+            class_weights = torch.Tensor([.25, .25, .25, .25]).to(device)
+        criterion = nn.CrossEntropyLoss(weight = class_weights)
         optimizer = optim.AdamW(net.parameters(), 
                                 lr = lr, 
                                 weight_decay = .0)
+        scheduler = optim.lr_scheduler.StepLR(optimizer,
+                                              step_size = 16,
+                                              gamma = 0.1)
     else:   # for single class training
         train_dataset = CTMaskDataset()
-        criterion = FocalLoss()
+        criterion = FocalLossBCE()
         optimizer = optim.AdamW(net.parameters(), 
                                 lr = lr, 
                                 weight_decay = .0)
@@ -53,28 +64,35 @@ def train_net(net,
     train_loader = DataLoader(train_dataset,
                               batch_size=batch_size,
                               shuffle = True,
-                              num_workers = 1,
+                              num_workers = 12,
                               pin_memory = True)
     
     writer = SummaryWriter(log_dir = dir_logging)
     logging.info(f'Training initialization:\n'
-                    f'\tEpochs:                {epochs}\n'
-                    f'\tBatch size:            {batch_size}\n'
-                    f'\tLoss Function:         {criterion.__class__.__name__}\n'
-                    f'\tOptimizer:             {optimizer.__class__.__name__}\n'
-                    f'\tOptimizer Args:        {optimizer.defaults}\n'
-                    f'\tLearning rate:         {lr}\n'
-                    f'\tDevice:                {device.type}\n'
-                    f'\tClass masks:           {mask_names}\n'
-                    f'\tTraining size:         {n_train}\n'
-                    f'\tValidation size:       {n_val}\n'
-                    f'\tValidataion Volumes:   {val_idxs}\n'
-                    f'\tTraining Volumes:      {train_idxs}')
+                 f'\tEpochs:                {epochs}\n'
+                 f'\tBatch size:            {batch_size}\n'
+                 f'\tLoss Function:         {criterion.__class__.__name__}\n'
+                 f'\tOptimizer:             {optimizer.__class__.__name__}\n'
+                 f'\tClass Weights:         {class_weights}\n'
+                 f'\tOptimizer Args:        {optimizer.defaults}\n'
+                 f'\tLearning rate:         {lr}\n'
+                 f'\tGrad Clip Val:         {grad_clip}\n'
+                 f'\tDevice:                {device.type}\n'
+                 f'\tClass masks:           {mask_names}\n'
+                 f'\tTraining size:         {n_train}\n'
+                 f'\tValidation size:       {n_val}\n'
+                 f'\tValidataion Volumes:   {val_idxs}\n'
+                 f'\tTraining Volumes:      {train_idxs}')
 
     global_step = 0
 
     for epoch in range(epochs):
-        net.train()
+        
+        # for running in "reduced initial bg weight" mode
+        if net.n_classes > 1 and init_weights == True and epoch == 4:
+            class_weights = torch.Tensor([.25, .25, .25, .25]).to(device)
+            criterion = nn.CrossEntropyLoss(weight = class_weights)
+        
         epoch_loss = 0
         with tqdm(total = n_train,    # progress bar
                   desc = f'Epoch {epoch + 1}/{epochs}', 
@@ -83,7 +101,7 @@ def train_net(net,
                   leave = False,
                   bar_format = '{l_bar}{bar:60}{r_bar}{bar:-10b}') as pbar:
 
-            for i, batch in enumerate(train_loader):
+            for batch in enumerate(train_loader):
                 imgs = batch['ct'] # (N, Channel, H, W)
                 if net.n_classes > 1:
                     true_mask = batch['target'].squeeze(1) # (N, H, W)
@@ -98,7 +116,7 @@ def train_net(net,
                 # forward pass image through model
                 pred_masks = net(imgs)
 
-                # calcululate and log loss
+                # compute and log the loss
                 loss = criterion(pred_masks, true_mask)
                 epoch_loss += loss.item()
                 writer.add_scalar(f'train_loss', loss.item(), global_step)
@@ -107,36 +125,36 @@ def train_net(net,
                 # backpropogate the loss
                 optimizer.zero_grad()
                 loss.backward()
-                # nn.utils.clip_grad_value_(net.parameters(), 0.1)
+                
+                # gradient clipping
+                if grad_clip != 0:
+                    nn.utils.clip_grad_value_(net.parameters(), grad_clip)
                 optimizer.step()
 
                 # update the progress bar
                 pbar.update(imgs.shape[0])
                 global_step += 1
                 
-                if i in [round(len(train_loader)*batch_num/10) for batch_num in range(1,10)]:
-                    # validation round
-                    net.eval()
-                    with torch.no_grad():
-                        dices, ious = eval_volumes(net, 
-                                                   device,
-                                                   val_idxs,
-                                                   mask_names,
-                                                   p_threshold = 0.5)
-                    # log validation metrics
-                    writer.add_scalars(f'dice', dices, global_step)
-                    writer.add_scalars(f'iou', ious, global_step)
-                    
-                    # step through learning sheduler
-                    # scheduler.step()
+            # validation round
+            net.eval()
+            with torch.no_grad():
+                dices, ious = eval_volumes(net, 
+                                            device,
+                                            val_idxs,
+                                            mask_names,
+                                            p_threshold = 0.5)
+            # log validation metrics
+            writer.add_scalars(f'dice', dices, global_step)
+            writer.add_scalars(f'iou', ious, global_step)
 
-                    # log learning rate
-                    writer.add_scalar(f'learning_rate', 
-                                        optimizer.param_groups[0]['lr'], 
-                                        global_step)
-
-                    # set net back to train mode
-                    net.train()
+            # set net back to train mode
+            net.train()
+        
+            # step through learning scheduler
+            scheduler.step()
+            writer.add_scalar(f'learning_rate', 
+                              optimizer.param_groups[0]['lr'], 
+                              global_step)
                 
     if save_cp:
         torch.save(net.state_dict(),
@@ -146,25 +164,25 @@ def train_net(net,
 
 if __name__ == '__main__':
     ############################################################################
-    ### GENERAL TRAINING SCHEME SET UP
+    ### TRAINING SET UP
     ### log folder / description / train & validation volumes / masks
+    ### subfolder name and description for run logs
+    subfolder = 'multiclass_testing'
+    run_description = 'FocalLossCE Test'
     
-    # subfolder name and description for run logs
-    subfolder = 'name_me'
-    run_description = 'ready to train!'
-    
-    # training/validation splits by patient vol_idx (see README)
-    val_idxs = [[2, 1], [2, 3]]
-    trn_idxs = [[1, 2], [3, 3], [5, 3], [5, 2]]
-    generateNpySlices(trn_idxs, mask_names = ['spine_mask'])
-    
-    # mask names defining the class masks (see README)
-    mask_names = ['spine_mask']
+    ### mask names defining the class masks (see README)
+    mask_names = ['spine_mask', 'stern_mask', 'pelvi_mask']
     n_classes = len(mask_names)+1 if len(mask_names) > 1 else 1
+    
+    ### training/validation splits by patient vol_idx (see README)
+    val_idxs = [[2, 1], [2, 3]]
+    trn_idxs = [[1, 2], [3, 3], [5, 3], [5, 2], [4, 2], [5, 1], [3, 2], [4, 1], 
+                [6, 1], [6, 3], [1, 3], [3, 1], [1, 1], [4, 3]]
+    generateNpySlices(trn_idxs, mask_names = mask_names)
     ############################################################################
     
     dt_string = datetime.now().strftime('%Y-%m-%d_%H.%M')
-    dir_logging = 'unet-2D/.runs/{}/{}/'.format(subfolder, dt_string)
+    dir_logging = 'unet2D/.runs/{}/{}/'.format(subfolder, dt_string)
     try:
         os.makedirs(dir_logging)
     except OSError:
@@ -193,7 +211,7 @@ if __name__ == '__main__':
                   trn_idxs,
                   val_idxs,
                   mask_names,
-                  epochs = 16,
+                  epochs = 48,
                   batch_size = 6,
                   lr = 1e-4,
                   save_cp = True)

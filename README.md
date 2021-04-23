@@ -31,7 +31,7 @@ Note that not all ".mat" volume files need to have the same mask data, and some 
 
 The ".mat" files should also be oriented such that the the first dimension represents the direction normal to the "coronal" anatomical plane, the second dimension represents the direction normal to the "sagittal" plane, and the third dimension represents the direction normal to the "axial" plane. 
 
-## Instructions for use...
+## Instructions for training...
 ---
 **Assuming** you have your data in the form, format, and location that is described above...
 
@@ -59,7 +59,7 @@ The ".mat" files should also be oriented such that the the first dimension repre
       your run log data will be stored. Also add a run description for the log,
       if you want.
 
-      a. The default parent folder is `"/unet-2D/.runs/"`. So your run logs will be stored at `"/unet-2D/.runs/<subfolder>/"`
+      a. The default parent folder is `"/unet2D/.runs/"`. So your run logs will be stored at `"/unet2D/.runs/<subfolder>/"`
 
    3. Add `val_idxs` and `trn_idxs`. These can be from `generateSplits()`, or whatever you want them to be. But:
       

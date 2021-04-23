@@ -169,8 +169,7 @@ def generateNpySlices(vol_idxs,
                       vol_folder = environ['DATA'] + '\\ct_pt_volumes\\',
                       output_folder = environ['DATA'] + '\\train_data\\', 
                       mask_names = ['spine_mask', 'stern_mask', 'pelvi_mask'],
-                      plane = 'axial',
-                      no_empties = False):
+                      plane = 'axial'):
     """ From a list of vol_idxs, generate 2D .npy files with which to train a
     convnet. Creates multiclass mask targets when more than one class is passed
     with mask_names. Masks are assigned class numbers in the order they appear 
