@@ -31,10 +31,11 @@ def train_net(net,
               grad_clip = 1,
               lr = 0.0001,
               save_cp = True,
-              init_weights = True):
+              init_weights = True,
+              plane = 'axial'):
 
     if net.n_classes > 1:   # for multiclass training
-        train_dataset = CTMaskDataset()
+        train_dataset = CTMaskDataset(plane = plane)
         if init_weights == True:
             class_weights = torch.Tensor([.1, .3, .3, .3]).to(device)
         else:
@@ -47,7 +48,7 @@ def train_net(net,
                                               step_size = 16,
                                               gamma = 0.1)
     else:   # for single class training
-        train_dataset = CTMaskDataset()
+        train_dataset = CTMaskDataset(plane = plane)
         criterion = FocalLossBCE()
         optimizer = optim.AdamW(net.parameters(), 
                                 lr = lr, 
@@ -59,7 +60,7 @@ def train_net(net,
         #                                                  'max',
         #                                                  patience = 8)
     n_train = len(train_dataset)
-    n_val = getScanCount(val_idxs)
+    n_val = getScanCount(val_idxs, plane = plane)
     
     train_loader = DataLoader(train_dataset,
                               batch_size=batch_size,
@@ -69,6 +70,7 @@ def train_net(net,
     
     writer = SummaryWriter(log_dir = dir_logging)
     logging.info(f'Training initialization:\n'
+                 f'\tAnatomical Plane:      {plane}\n'
                  f'\tEpochs:                {epochs}\n'
                  f'\tBatch size:            {batch_size}\n'
                  f'\tLoss Function:         {criterion.__class__.__name__}\n'
@@ -101,7 +103,7 @@ def train_net(net,
                   leave = False,
                   bar_format = '{l_bar}{bar:60}{r_bar}{bar:-10b}') as pbar:
 
-            for batch in enumerate(train_loader):
+            for batch in train_loader:
                 imgs = batch['ct'] # (N, Channel, H, W)
                 if net.n_classes > 1:
                     true_mask = batch['target'].squeeze(1) # (N, H, W)
@@ -139,10 +141,11 @@ def train_net(net,
             net.eval()
             with torch.no_grad():
                 dices, ious = eval_volumes(net, 
-                                            device,
-                                            val_idxs,
-                                            mask_names,
-                                            p_threshold = 0.5)
+                                           device,
+                                           val_idxs,
+                                           mask_names,
+                                           p_threshold = 0.5,
+                                           plane = plane)
             # log validation metrics
             writer.add_scalars(f'dice', dices, global_step)
             writer.add_scalars(f'iou', ious, global_step)
@@ -165,10 +168,13 @@ def train_net(net,
 if __name__ == '__main__':
     ############################################################################
     ### TRAINING SET UP
+    ### anatomical plane
+    plane = 'coronal'
+
     ### log folder / description / train & validation volumes / masks
     ### subfolder name and description for run logs
-    subfolder = 'multiclass_testing'
-    run_description = 'FocalLossCE Test'
+    subfolder = 'multiview_testing'
+    run_description = 'coronal plane tuning'
     
     ### mask names defining the class masks (see README)
     mask_names = ['spine_mask', 'stern_mask', 'pelvi_mask']
@@ -178,7 +184,7 @@ if __name__ == '__main__':
     val_idxs = [[2, 1], [2, 3]]
     trn_idxs = [[1, 2], [3, 3], [5, 3], [5, 2], [4, 2], [5, 1], [3, 2], [4, 1], 
                 [6, 1], [6, 3], [1, 3], [3, 1], [1, 1], [4, 3]]
-    generateNpySlices(trn_idxs, mask_names = mask_names)
+    generateNpySlices(trn_idxs, mask_names = mask_names, plane = plane)
     ############################################################################
     
     dt_string = datetime.now().strftime('%Y-%m-%d_%H.%M')
@@ -211,10 +217,11 @@ if __name__ == '__main__':
                   trn_idxs,
                   val_idxs,
                   mask_names,
-                  epochs = 48,
+                  epochs = 32,
                   batch_size = 6,
                   lr = 1e-4,
-                  save_cp = True)
+                  save_cp = True,
+                  plane = plane)
         
     except KeyboardInterrupt:
         torch.save(net.state_dict(), dir_logging + 'INTERRUPTED.pt')

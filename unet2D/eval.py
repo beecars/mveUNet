@@ -51,7 +51,8 @@ def eval_volume(net,
                 device,
                 vol_idx,
                 mask_names,
-                p_threshold = 0.5): 
+                p_threshold = 0.5,
+                plane = 'axial'): 
     """ Takes a vol_idx in the form [patient_idx, day_idx]. Loads ct data from 
     the MATLAB volume data file represented by vol_idx. Makes prediction volume
     from net. Evaluates the predicion against the ground truth masks defined by
@@ -72,7 +73,8 @@ def eval_volume(net,
     pred_volume = predict_vol_from_vol_idx(net,
                                        device,
                                        vol_idx,
-                                       p_threshold = p_threshold)
+                                       p_threshold = p_threshold,
+                                       plane = plane)
     
     # create dicts to store performance metrics across classes
     ious = {mask_name : 0 for mask_name in mask_names}
@@ -97,7 +99,8 @@ def eval_volumes(net,
                 device,
                 vol_idxs,
                 mask_names = ['spine_mask', 'stern_mask', 'pelvi_mask'],
-                p_threshold = 0.5):
+                p_threshold = 0.5,
+                plane = 'axial'):
     """ Wraps eval_volume to perform multiple evaluations given a list of 
     vol_idxs.
     
@@ -121,7 +124,8 @@ def eval_volumes(net,
                                   device,
                                   vol_idx,
                                   mask_names,
-                                  p_threshold = p_threshold)
+                                  p_threshold = p_threshold,
+                                  plane = plane)
         # add the score of each evaluated volume to the sum
         for mask_name in mask_names:
             dice_sums[mask_name] = dice_sums[mask_name] + dices[mask_name]

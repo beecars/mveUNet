@@ -27,6 +27,7 @@ def loadMatData(vol_idx,
 
 
 def getScanCount(vol_idxs,
+                 plane = 'axial',
                  folder = environ['DATA'] + '\\ct_pt_volumes\\'):
     """
     From a list of vol_idxs determine the number of scans present.
@@ -43,7 +44,12 @@ def getScanCount(vol_idxs,
     total_scans = 0
     for vol_idx in vol_idxs:
         vol_file = (folder + f'patient{vol_idx[0]}_day{vol_idx[1]}.mat')
-        scans = whosmat(vol_file)[0][1][-1]
+        if plane == 'axial':
+            scans = whosmat(vol_file)[0][1][2]
+        if plane == 'sagittal':
+            scans = whosmat(vol_file)[0][1][1]
+        if plane == 'coronal':
+            scans = whosmat(vol_file)[0][1][0]
         total_scans = total_scans + scans
     return total_scans
 
@@ -239,8 +245,7 @@ def generateNpySlices(vol_idxs,
             if plane == 'sagittal':
                 for idx in range(0, volume['ct'].shape[1]):
                     class_count = 1
-                    target = np.zeros(volume['ct'].shape[0:2])
-                    
+                    target = np.zeros((volume['ct'].shape[0], volume['ct'].shape[2]))
                     # save CT file
                     np.save(output_folder + 'ct/' f'{file_num}_ct.npy', volume['ct'][:, idx, :])
                     
@@ -258,7 +263,7 @@ def generateNpySlices(vol_idxs,
             if plane == 'coronal':
                 for idx in range(0, volume['ct'].shape[0]):
                     class_count = 1
-                    target = np.zeros(volume['ct'].shape[0:2])
+                    target = np.zeros((volume['ct'].shape[1], volume['ct'].shape[2]))
                     
                     # save CT file
                     np.save(output_folder + 'ct/' f'{file_num}_ct.npy', volume['ct'][idx, :, :])

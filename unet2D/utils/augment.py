@@ -14,18 +14,31 @@ def augment_ct_mask_pair(image_dict, plane = 'axial'):
     # define the augmentation
     if plane == 'axial':
         augmentation = albu.Compose([
-            albu.ShiftScaleRotate(scale_limit = [0, 0.1], shift_limit=0.2, rotate_limit=5, p=1),
+            albu.ShiftScaleRotate(scale_limit = [0, 0.1], 
+                                  shift_limit=0.2, 
+                                  rotate_limit=5,
+                                  p=1),
             albu.CenterCrop(320, 320),
             albu.HorizontalFlip(p=0.5)
             ])
     elif plane == 'sagittal':
         augmentation = albu.Compose([
-            albu.ShiftScaleRotate(scale_limit = [0.2, 0.2], shift_limit=0.2, rotate_limit=5, p=1),
+            albu.ShiftScaleRotate(scale_limit = [0.2, 0.2], 
+                                  shift_limit_x = 0.2, 
+                                  shift_limit_y = 0, 
+                                  rotate_limit=20, 
+                                  p=1),
+            PadIfNeeded(512, 320),
             albu.CenterCrop(320, 320)
             ])
     elif plane == 'coronal':
         augmentation = albu.Compose([
-            albu.ShiftScaleRotate(scale_limit = [0.2, 0.2], shift_limit=0.2, rotate_limit=5, p=1),
+            albu.ShiftScaleRotate(scale_limit = [0.2, 0.2], 
+                        shift_limit_x = 0.1, 
+                        shift_limit_y = 0.1, 
+                        rotate_limit=20, 
+                        p=1),
+            PadIfNeeded(320, 512),
             albu.CenterCrop(320, 320),
             albu.HorizontalFlip(p=0.5)
             ])
