@@ -169,12 +169,12 @@ if __name__ == '__main__':
     ############################################################################
     ### TRAINING SET UP
     ### anatomical plane
-    plane = 'coronal'
+    plane = 'axial'
 
     ### log folder / description / train & validation volumes / masks
     ### subfolder name and description for run logs
-    subfolder = 'multiview_testing'
-    run_description = 'coronal plane tuning'
+    subfolder = 'new_test'
+    run_description = 'new_desc'
     
     ### mask names defining the class masks (see README)
     mask_names = ['spine_mask', 'stern_mask', 'pelvi_mask']
@@ -203,6 +203,7 @@ if __name__ == '__main__':
 
     # UNet setup
     net = UNet(n_channels=1, n_classes=n_classes, bilinear=False)
+    net.load_state_dict(torch.load('C:/.py_workspace/mveUNet/unet2D/.runs/multiview_testing/2021-05-17_22.20/model_state.pth'))
     device = torch.device('cuda')
     net.to(device=device) # model to GPU
     logging.info(f'Network:\n'
@@ -221,7 +222,9 @@ if __name__ == '__main__':
                   batch_size = 6,
                   lr = 1e-4,
                   save_cp = True,
-                  plane = plane)
+                  plane = plane,
+                  grad_clip = 0.1,
+                  init_weights = False)
         
     except KeyboardInterrupt:
         torch.save(net.state_dict(), dir_logging + 'INTERRUPTED.pt')
