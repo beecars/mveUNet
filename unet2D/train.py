@@ -168,12 +168,12 @@ def train_net(net,
 if __name__ == '__main__':
     ############################################################################
     ### TRAINING SET UP
-    ### anatomical plane
+    ### anatomical plane for model training
     plane = 'axial'
 
     ### log folder / description / train & validation volumes / masks
     ### subfolder name and description for run logs
-    subfolder = 'new_test'
+    subfolder = 'new_test_subfolder'
     run_description = 'new_desc'
     
     ### mask names defining the class masks (see README)
@@ -203,7 +203,6 @@ if __name__ == '__main__':
 
     # UNet setup
     net = UNet(n_channels=1, n_classes=n_classes, bilinear=False)
-    net.load_state_dict(torch.load('C:/.py_workspace/mveUNet/unet2D/.runs/multiview_testing/2021-05-17_22.20/model_state.pth'))
     device = torch.device('cuda')
     net.to(device=device) # model to GPU
     logging.info(f'Network:\n'

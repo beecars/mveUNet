@@ -1,8 +1,12 @@
 # Multi-View Ensemble Multiclass UNet
 Convnets are widely used for medical image segmentation tasks, and UNet has proven to be an effective model when paired with data augmentation on smaller training datasets. The current best-in-class convnets for semantic segmentation of volume data use computationally expensive 3D convolutional layers. The acceleration hardware used for the convnet training and inference in this thesis is a Nvidia GTX 1070, which only has 8GB of VRAM available for parallel computation. This puts the 3D semantic segmentation convnets just out of reach. Instead, I use a multi-view ensemble of 2D UNets to increase the accuracy of the segmentation. In this ensemble method, the results of three different 2D UNets are combined to form a single prediction volume. Each of the three UNets has been trained on scans from a different “view” – in this case the views are the sagittal, axial, and coronal anatomical planes. The system can also segment the pelvis and sternum.
+
+## U-Net Model
+The U-Net model used in this repository (in the `"/mveUNet/unet2D/unet/"` folder) is based off of this work: [Pytorch-UNet](https://github.com/milesial/Pytorch-UNet). It is the same architecture as the original [U-Net](https://arxiv.org/abs/1505.04597) but with added batch normalization layers. 
+
 ## Dataset
 ---
-For this repository to function, it is required to accompany it with a very specfic patient dataset. 
+For this repository to function, it is required to accompany it with a very specfic patient dataset.
 
 The "rules" for this dataset are as follows:
 
@@ -30,24 +34,23 @@ mask_names = ['spine_mask', 'stern_mask']  ----> implies spine pixels = 1
 Note that not all ".mat" volume files need to have the same mask data, and some volumes have no mask data. The `generateSplits()` function in the `utils.py` file handles this issue by matching patients with a given mask configuration. It then creates training and validation split from only that subset.
 
 The ".mat" files should also be oriented such that the the first dimension represents the direction normal to the "coronal" anatomical plane, the second dimension represents the direction normal to the "sagittal" plane, and the third dimension represents the direction normal to the "axial" plane. 
-
-## Instructions for training...
+___
+## TRAINING THE MODEL
 ---
 **Assuming** you have your data in the form, format, and location that is described above...
 
 ### 1. Ensure you have `"os.environ['DATA']"` a.k.a. a user or system-level environment variable "DATA" set to the location of your data.
 
 ### 2. Create training data for the UNet.   
-   1. Run `generateSplits()` in utils.py to generate a stratified training/validation split. Or, you know, do it by hand.
+   1. Run `generateSplits()` in utils.py to generate a stratified training/validation split of vol_idxs. Or, do it by hand.
       
       a. Choose what classes you want to include in the dataset by passing the "mask_critera" argument. The `mask_names` must match the names of masks in the `"patient#day#.mat"` files.
    
    2. Use the training splits as an arugment to `"generateNpySlices()"` to generate the training data.
       
-      a. Again you need to pass class data, this time as a "mask_names" 
-         argument.
+      a. Again you need to pass class names as a  `mask_names` list argument.
    
-   3. Ensure the .npy slices (2D image arrays) are where they are supposed to be.
+   3. Ensure the .npy slices resulting from `"generateNpySlices()"` (2D image arrays) are where they are supposed to be.
       
       a. Default folder is `"os.environ['DATA']/train_data"`.
    
@@ -83,3 +86,7 @@ The ".mat" files should also be oriented such that the the first dimension repre
    1. It trains.
 
 ### 5. Can run tensorboard to analyze model during training! Or after! Whenever!
+---
+## MAKING PREDICTIONS
+---
+Check out the notebook file `"/mveUNet/unet2D/tasks.ipynb"`. There is a "Generate prediction volume from model." task. Modify as needed! Essentially it does this: given a model, the path to the model weights, and a vol_idx, it makes a volume prediction for each object class in the model. Note that you can set the "`threshold`" and "`p_threshold"` arguments in the `"predict_vol_from_vol_idx()"` function to allow raw prediction volumes (voxels in the range [0, 1]) or thresholded masks. I have it saving to a ".mat" format, since I do analysis in MATLAB. 
