@@ -42,13 +42,13 @@ ___
 ### 1. Ensure you have `"os.environ['DATA']"` a.k.a. a user or system-level environment variable "DATA" set to the location of your data.
 
 ### 2. Create training data for the UNet.   
-   1. Run `generateSplits()` in utils.py to generate a stratified training/validation split of vol_idxs. Or, do it by hand.
+   1. (Optional) Run `generateSplits()` in utils.py to generate a stratified training/validation split of vol_idxs. Or, do it by hand.
       
       a. Choose what classes you want to include in the dataset by passing the "mask_critera" argument. The `mask_names` must match the names of masks in the `"patient#day#.mat"` files.
    
-   2. Use the training splits as an arugment to `"generateNpySlices()"` to generate the training data.
+   2. Use the training split (a list of vol_idxs representing the training volumes) as an arugment to `"generateNpySlices()"` to generate the training data. The function `"generateNpySlices()"` has an argument for the anatomical plane. If you don't know what you want, then there is a 99% chance you should leave this alone, where it defaults to the `"axial"` plane. But if you want to train from the `"sagittal"` or `"coronal"` planes, those options are available. 
       
-      a. Again you need to pass class names as a  `mask_names` list argument.
+      a. You need to pass class names as a  `mask_names` list argument to `"generateNpySlices()"`.
    
    3. Ensure the .npy slices resulting from `"generateNpySlices()"` (2D image arrays) are where they are supposed to be.
       
@@ -66,8 +66,7 @@ ___
 
    3. Add `val_idxs` and `trn_idxs`. These can be from `generateSplits()`, or whatever you want them to be. But:
       
-      a. They shouldn't be patient volumes associated with any of the scans in 
-         the training data made in (1). 
+      a. Be careful that the validation indexes do not represent any of the same patients that appear in the training indexes. This would bias the validation. 
          
       b. The ".mat" files that the `val_idxs` represent must have all the masks for 
          the classes you chose. Otherwise it won't work at all.
@@ -79,7 +78,9 @@ ___
    5. Modify anything else you want about the UNet training scheme found in the 
       call to `train_net()` and in `train_net()` itself. Epochs. Batch size. 
       Learning rate. Learning rate scheduling. Loss functions. Optimizers. 
-      Optimizer hyperparameters. Etc.
+      Optimizer hyperparameters. If you changed the anatomical plane to something
+      other than "axial", you will want to override the "plane" argument to the taining
+      to your desired plane. 
 
 ### 4. Run `train.py`.
 
