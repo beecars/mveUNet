@@ -5,7 +5,6 @@ Convnets are widely used for medical image segmentation tasks, and UNet has prov
 The U-Net model used in this repository (in the `"/mveUNet/unet2D/unet/"` folder) is based off of this work: [Pytorch-UNet](https://github.com/milesial/Pytorch-UNet). It is the same architecture as the original [U-Net](https://arxiv.org/abs/1505.04597) but with added batch normalization layers. 
 
 ## Dataset
----
 For this repository to function, it is required to accompany it with a very specfic patient dataset.
 
 The "rules" for this dataset are as follows:
@@ -34,9 +33,9 @@ mask_names = ['spine_mask', 'stern_mask']  ----> implies spine pixels = 1
 Note that not all ".mat" volume files need to have the same mask data, and some volumes have no mask data. The `generateSplits()` function in the `utils.py` file handles this issue by matching patients with a given mask configuration. It then creates training and validation split from only that subset.
 
 The ".mat" files should also be oriented such that the the first dimension represents the direction normal to the "coronal" anatomical plane, the second dimension represents the direction normal to the "sagittal" plane, and the third dimension represents the direction normal to the "axial" plane. 
-___
+
 ## TRAINING THE MODEL
----
+
 **Assuming** you have your data in the form, format, and location that is described above...
 
 ### 1. Ensure you have `"os.environ['DATA']"` a.k.a. a user or system-level environment variable "DATA" set to the location of your data.
@@ -87,7 +86,7 @@ ___
    1. It trains.
 
 ### 5. Can run tensorboard to analyze model during training! Or after! Whenever!
----
+
 ## MAKING PREDICTIONS
----
+
 Check out the notebook file `"/mveUNet/unet2D/tasks.ipynb"`. There is a "Generate prediction volume from model." task. Modify as needed! Essentially it does this: given a model, the path to the model weights, and a vol_idx, it makes a volume prediction for each object class in the model. Note that you can set the "`threshold`" and "`p_threshold"` arguments in the `"predict_vol_from_vol_idx()"` function to allow raw prediction volumes (voxels in the range [0, 1]) or thresholded masks. I have it saving to a ".mat" format, since I do analysis in MATLAB. 
