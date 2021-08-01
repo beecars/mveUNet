@@ -31,16 +31,11 @@ def train_net(net,
               grad_clip = 1,
               lr = 0.0001,
               save_cp = True,
-              init_weights = True,
               plane = 'axial'):
 
     if net.n_classes > 1:   # for multiclass training
         train_dataset = CTMaskDataset(plane = plane)
-        if init_weights == True:
-            class_weights = torch.Tensor([.1, .3, .3, .3]).to(device)
-        else:
-            class_weights = torch.Tensor([.25, .25, .25, .25]).to(device)
-        criterion = nn.CrossEntropyLoss(weight = class_weights)
+        criterion = nn.CrossEntropyLoss()
         optimizer = optim.AdamW(net.parameters(), 
                                 lr = lr, 
                                 weight_decay = .0)
@@ -75,7 +70,6 @@ def train_net(net,
                  f'\tBatch size:            {batch_size}\n'
                  f'\tLoss Function:         {criterion.__class__.__name__}\n'
                  f'\tOptimizer:             {optimizer.__class__.__name__}\n'
-                 f'\tClass Weights:         {class_weights}\n'
                  f'\tOptimizer Args:        {optimizer.defaults}\n'
                  f'\tLearning rate:         {lr}\n'
                  f'\tGrad Clip Val:         {grad_clip}\n'
@@ -89,11 +83,6 @@ def train_net(net,
     global_step = 0
 
     for epoch in range(epochs):
-        
-        # for running in "reduced initial bg weight" mode
-        if net.n_classes > 1 and init_weights == True and epoch == 4:
-            class_weights = torch.Tensor([.25, .25, .25, .25]).to(device)
-            criterion = nn.CrossEntropyLoss(weight = class_weights)
         
         epoch_loss = 0
         with tqdm(total = n_train,    # progress bar
@@ -222,8 +211,7 @@ if __name__ == '__main__':
                   lr = 1e-4,
                   save_cp = True,
                   plane = plane,
-                  grad_clip = 0.1,
-                  init_weights = False)
+                  grad_clip = 0.1)
         
     except KeyboardInterrupt:
         torch.save(net.state_dict(), dir_logging + 'INTERRUPTED.pt')
