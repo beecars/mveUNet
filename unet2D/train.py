@@ -1,7 +1,6 @@
 import sys
 import os
 
-from torch.nn.modules.loss import CrossEntropyLoss
 os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = '1'
 import logging
 from shutil import rmtree
@@ -162,8 +161,8 @@ if __name__ == '__main__':
 
     ### log folder / description / train & validation volumes / masks
     ### subfolder name and description for run logs
-    subfolder = 'new_test_subfolder'
-    run_description = 'new_desc'
+    subfolder = 'axial_2d'
+    run_description = 'for new HSCT data'
     
     ### mask names defining the class masks (see README)
     mask_names = ['spine_mask', 'stern_mask', 'pelvi_mask']
