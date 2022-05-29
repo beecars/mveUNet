@@ -1,4 +1,5 @@
-from albumentations.augmentations.transforms import PadIfNeeded, ShiftScaleRotate
+from albumentations.augmentations.geometric.transforms import ShiftScaleRotate
+from albumentations.augmentations.transforms import PadIfNeeded
 import numpy as np
 import albumentations as albu
 
